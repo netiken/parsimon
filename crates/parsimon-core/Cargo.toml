@@ -1,0 +1,30 @@
+[package]
+name = "parsimon-core"
+edition = "2021"
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { workspace = true }
+crossbeam-channel = "0.5.6"
+delegate = "0.8.0"
+derive-new = { workspace = true }
+derive_more = "0.99.17"
+itertools = "0.10.4"
+ndarray = "0.15.6"
+ndarray-stats = "0.5.1"
+num_cpus = "1.13.1"
+ordered-float = "3.1.0"
+petgraph = { version = "0.6.2", features = ["serde-1"] }
+rand = "0.8.5"
+rayon = { workspace = true }
+rustc-hash = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+typed-builder = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true, features = ["yaml"] }
+
+[features]

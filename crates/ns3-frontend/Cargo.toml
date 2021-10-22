@@ -1,0 +1,19 @@
+[package]
+name = "ns3-frontend"
+edition = "2021"
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cmd_lib = "1.3.0"
+derivative = "2.2.0"
+parsimon-core = { path = "../parsimon-core" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+typed-builder = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+insta = { workspace = true }
+tempfile = { workspace = true }
