@@ -1,19 +1,22 @@
 #![warn(unreachable_pub, missing_debug_implementations)]
 
+#[macro_use]
+mod ident;
+
 pub mod client;
-pub mod ident;
+pub mod delay;
 pub mod linksim;
 pub mod mapping;
 pub mod network;
 
-use std::collections::HashMap;
-
-use client::Client;
+use client::VClient;
+use delay::DelayNet;
 use mapping::ClientMap;
 use network::Network;
 
-pub fn tbd(network: Network, clients: &[Client], mappings: ClientMap) -> DelayNet {
+pub fn tbd(network: Network, clients: &[VClient], mappings: ClientMap) -> Result<DelayNet, Error> {
     todo!()
 }
 
-pub struct DelayNet;
+#[derive(Debug)]
+pub enum Error {}
