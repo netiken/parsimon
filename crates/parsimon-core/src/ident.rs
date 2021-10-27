@@ -1,4 +1,3 @@
-#[macro_use]
 macro_rules! identifier {
     ($name: ident, $inner: ty) => {
         #[derive(
