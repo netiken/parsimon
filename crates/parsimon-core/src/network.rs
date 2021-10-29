@@ -2,7 +2,7 @@ use petgraph::graph::DiGraph;
 
 #[derive(Debug)]
 pub struct Network {
-    topology: DiGraph<Node, Channel, usize>,
+    topology: DiGraph<Node, Channel>,
     routes: (), // copy this from cloudburst
 }
 
