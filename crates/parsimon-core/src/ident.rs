@@ -28,6 +28,10 @@ macro_rules! identifier {
             pub const fn new(val: $inner) -> Self {
                 Self(val)
             }
+
+            pub const fn inner(self) -> $inner {
+                self.0
+            }
         }
     };
 }

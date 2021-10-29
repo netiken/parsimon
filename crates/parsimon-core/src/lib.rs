@@ -14,9 +14,10 @@ mod spec;
 
 mod run;
 
+// TODO: Clean these up
 pub use client::VClient;
 pub use linksim::LinkSim;
 pub use mapping::{ClientMap, NodeMap};
-pub use network::{DelayNet, Network};
+pub use network::{Channel, DelayNet, Network, Node, NodeKind};
 pub use run::{run, Error};
 pub use spec::Spec;

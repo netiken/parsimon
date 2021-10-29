@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::client::{ClientId, NodeId, VNodeId};
+use crate::{
+    client::{ClientId, VNodeId},
+    network::NodeId,
+};
 
 /// A mapping from clients to their node mappings
 pub type ClientMap = HashMap<ClientId, NodeMap>;

@@ -1,6 +1,7 @@
+use crate::network::NodeId;
+
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
-identifier!(NodeId, usize);
 
 #[derive(Debug)]
 pub struct VClient {
