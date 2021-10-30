@@ -18,6 +18,9 @@ mod run;
 pub use client::VClient;
 pub use linksim::LinkSim;
 pub use mapping::{ClientMap, NodeMap};
-pub use network::{Channel, DelayNet, Network, Node, NodeKind};
+pub use network::{
+    types::{Link, Node, NodeId, NodeKind},
+    DelayNet, Network,
+};
 pub use run::{run, Error};
 pub use spec::Spec;

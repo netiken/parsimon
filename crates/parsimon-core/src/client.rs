@@ -1,4 +1,4 @@
-use crate::network::NodeId;
+use crate::network::types::NodeId;
 
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);

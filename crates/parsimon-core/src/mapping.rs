@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     client::{ClientId, VNodeId},
-    network::NodeId,
+    network::types::NodeId,
 };
 
 /// A mapping from clients to their node mappings

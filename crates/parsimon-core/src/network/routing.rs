@@ -5,7 +5,10 @@ use petgraph::{
     visit::{VisitMap, Visitable},
 };
 
-use crate::network::{NodeId, NodeKind, Topology};
+use crate::network::{
+    topology::Topology,
+    types::{NodeId, NodeKind},
+};
 
 pub(super) type HopMatrix = HashMap<NodeId, HopMap>;
 pub(super) type HopMap = HashMap<NodeId, Vec<NodeId>>;
@@ -18,7 +21,7 @@ pub(super) struct Routes {
 impl Routes {
     /// Builds a routing table from a topology using BFS.
     pub(super) fn new(topology: &Topology) -> Self {
-        let g = topology;
+        let g = &topology.graph;
         let mut hops = HopMatrix::new();
         for start in g.node_indices() {
             let mut discovered = g.visit_map();
