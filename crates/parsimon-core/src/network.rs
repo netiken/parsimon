@@ -1,5 +1,5 @@
 mod routing;
-mod topology;
+pub(crate) mod topology;
 pub(crate) mod types;
 
 use self::{routing::Routes, topology::Topology};

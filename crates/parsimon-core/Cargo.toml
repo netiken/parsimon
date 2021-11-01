@@ -10,3 +10,4 @@ derive-new = "0.5.9"
 derive_more = "0.99.16"
 petgraph = "0.6.0"
 serde = { version = "1.0.130", features = ["derive"] }
+thiserror = "1.0.30"
