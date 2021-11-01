@@ -29,11 +29,14 @@ pub enum NodeKind {
 identifier!(NodeId, usize);
 
 /// A `Link` is a bidirectional channel
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, derive_new::new)]
 pub struct Link {
     pub a: NodeId,
     pub b: NodeId,
 }
 
-#[derive(Debug)]
-pub(crate) struct Channel;
+#[derive(Debug, derive_new::new)]
+pub(crate) struct Channel {
+    pub(crate) src: NodeId,
+    pub(crate) dst: NodeId,
+}
