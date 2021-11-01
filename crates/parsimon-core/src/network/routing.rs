@@ -72,9 +72,16 @@ impl Routes {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::network::types::{Link, Node};
 
-    // #[test]
-    fn tbd() {
+    #[test]
+    fn route_three_node_succeeds() -> anyhow::Result<()> {
+        let n1 = Node::new_host(NodeId::new(0));
+        let n2 = Node::new_host(NodeId::new(1));
+        let n3 = Node::new_switch(NodeId::new(2));
+        let l1 = Link::new(n1.id, n3.id);
+        let l2 = Link::new(n2.id, n3.id);
+        let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
         todo!()
     }
 }

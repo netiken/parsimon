@@ -125,27 +125,6 @@ mod tests {
     }
 
     #[test]
-    fn eight_node_topology_succeeds() {
-        // 4 hosts (IDs 0-3), 4 switches (IDs 4 and 5 are ToRs, IDs 6 and 7 are Aggs)
-        let hosts = (0..=3).map(|i| Node::new_host(NodeId::new(i)));
-        let switches = (4..=7).map(|i| Node::new_switch(NodeId::new(i)));
-        let nodes = hosts.chain(switches).collect::<Vec<_>>();
-        // Each ToR is connected to 2 hosts
-        let mut links = Vec::new();
-        links.push(Link::new(nodes[0].id, nodes[4].id));
-        links.push(Link::new(nodes[1].id, nodes[4].id));
-        links.push(Link::new(nodes[2].id, nodes[5].id));
-        links.push(Link::new(nodes[3].id, nodes[5].id));
-        // Each ToR is connected to both Aggs
-        links.push(Link::new(nodes[4].id, nodes[6].id));
-        links.push(Link::new(nodes[4].id, nodes[7].id));
-        links.push(Link::new(nodes[5].id, nodes[6].id));
-        links.push(Link::new(nodes[5].id, nodes[7].id));
-        let res = Topology::new(&nodes, &links);
-        assert!(res.is_ok());
-    }
-
-    #[test]
     fn duplicate_node_fails() {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(0)); // error
@@ -215,5 +194,26 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id);
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2]);
         assert!(matches!(res, Err(Error::IsolatedNode(..))));
+    }
+
+    #[test]
+    fn eight_node_topology_succeeds() {
+        // 4 hosts (IDs 0-3), 4 switches (IDs 4 and 5 are ToRs, IDs 6 and 7 are Aggs)
+        let hosts = (0..=3).map(|i| Node::new_host(NodeId::new(i)));
+        let switches = (4..=7).map(|i| Node::new_switch(NodeId::new(i)));
+        let nodes = hosts.chain(switches).collect::<Vec<_>>();
+        // Each ToR is connected to 2 hosts
+        let mut links = Vec::new();
+        links.push(Link::new(nodes[0].id, nodes[4].id));
+        links.push(Link::new(nodes[1].id, nodes[4].id));
+        links.push(Link::new(nodes[2].id, nodes[5].id));
+        links.push(Link::new(nodes[3].id, nodes[5].id));
+        // Each ToR is connected to both Aggs
+        links.push(Link::new(nodes[4].id, nodes[6].id));
+        links.push(Link::new(nodes[4].id, nodes[7].id));
+        links.push(Link::new(nodes[5].id, nodes[6].id));
+        links.push(Link::new(nodes[5].id, nodes[7].id));
+        let res = Topology::new(&nodes, &links);
+        assert!(res.is_ok());
     }
 }
