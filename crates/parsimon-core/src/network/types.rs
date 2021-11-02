@@ -1,3 +1,5 @@
+use crate::client::Flow;
+
 #[derive(Debug, Clone)]
 pub struct Node {
     pub id: NodeId,
@@ -39,4 +41,21 @@ pub struct Link {
 pub(crate) struct Channel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
+}
+
+#[derive(Debug)]
+pub(crate) struct TracedChannel {
+    pub(crate) src: NodeId,
+    pub(crate) dst: NodeId,
+    pub(crate) flows: Vec<Flow>,
+}
+
+impl TracedChannel {
+    pub(crate) fn new(chan: Channel, flows: Vec<Flow>) -> Self {
+        Self {
+            src: chan.src,
+            dst: chan.dst,
+            flows,
+        }
+    }
 }

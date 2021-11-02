@@ -19,8 +19,9 @@ pub use client::VClient;
 pub use linksim::LinkSim;
 pub use mapping::{ClientMap, NodeMap};
 pub use network::{
+    topology::TopologyError,
     types::{Link, Node, NodeId, NodeKind},
-    DelayNet, Network,
+    DelayNetwork, Network,
 };
 pub use run::{run, Error};
 pub use spec::Spec;

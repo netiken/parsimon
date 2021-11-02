@@ -8,11 +8,11 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Topology {
-    pub(crate) graph: DiGraph<Node, Channel>,
+pub(crate) struct Topology<C> {
+    pub(crate) graph: DiGraph<Node, C>,
 }
 
-impl Topology {
+impl Topology<Channel> {
     /// Creates a network topology from a list of nodes and links. This function returns an error if
     /// the given specification fails to produce a valid topology. The checks are not exhaustive.
     ///
@@ -23,14 +23,14 @@ impl Topology {
     /// - Every node must be referenced by some link.
     /// - For any two nodes, there must be at most one link between them.
     /// - Every host node should only have one link.
-    pub(crate) fn new(nodes: &[Node], links: &[Link]) -> Result<Self, Error> {
+    pub(crate) fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let mut g = DiGraph::new();
         let mut id2idx = HashMap::new();
         for n @ Node { id, .. } in nodes.iter().cloned() {
             let idx = g.add_node(n);
             if id2idx.insert(id, idx).is_some() {
                 // CORRECTNESS: Every node must have a unique ID.
-                return Err(Error::DuplicateNodeId(id));
+                return Err(TopologyError::DuplicateNodeId(id));
             }
         }
         let idx_of = |id| *id2idx.get(&id).unwrap();
@@ -38,13 +38,13 @@ impl Topology {
         for Link { a, b, .. } in links.iter().cloned() {
             // CORRECTNESS: Every link must have distinct endpoints in `nodes`.
             if a == b {
-                return Err(Error::NodeAdjacentSelf(a));
+                return Err(TopologyError::NodeAdjacentSelf(a));
             }
             if !id2idx.contains_key(&a) {
-                return Err(Error::UndeclaredNode(a));
+                return Err(TopologyError::UndeclaredNode(a));
             }
             if !id2idx.contains_key(&b) {
-                return Err(Error::UndeclaredNode(b));
+                return Err(TopologyError::UndeclaredNode(b));
             }
             referenced_nodes.insert(a);
             referenced_nodes.insert(b);
@@ -55,14 +55,14 @@ impl Topology {
         // CORRECTNESS: Every node must be referenced by some link.
         for &id in id2idx.keys() {
             if !referenced_nodes.contains(&id) {
-                return Err(Error::IsolatedNode(id));
+                return Err(TopologyError::IsolatedNode(id));
             }
         }
         for eidx in g.edge_indices() {
             // CORRECTNESS: For any two nodes, there must be at most one link between them.
             let (a, b) = g.edge_endpoints(eidx).unwrap();
             if g.edges_connecting(a, b).count() > 1 {
-                return Err(Error::DuplicateLink {
+                return Err(TopologyError::DuplicateLink {
                     n1: g[a].id,
                     n2: g[b].id,
                 });
@@ -72,7 +72,7 @@ impl Topology {
             if matches!(kind, NodeKind::Host) {
                 let nr_outgoing = g.edges(a).count();
                 if nr_outgoing > 1 {
-                    return Err(Error::TooManyHostLinks { id, n: nr_outgoing });
+                    return Err(TopologyError::TooManyHostLinks { id, n: nr_outgoing });
                 }
             }
         }
@@ -81,7 +81,7 @@ impl Topology {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum TopologyError {
     #[error("Duplicate node ID {0}")]
     DuplicateNodeId(NodeId),
 
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn three_node_topology_succeeds() {
         let n1 = Node::new_host(NodeId::new(0));
-        let n2 = Node::new_host(NodeId::new(1)); // error
+        let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
         let l1 = Link::new(n1.id, n3.id);
         let l2 = Link::new(n2.id, n3.id);
@@ -132,7 +132,7 @@ mod tests {
         let l1 = Link::new(n1.id, n3.id);
         let l2 = Link::new(n2.id, n3.id);
         let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
-        assert!(matches!(res, Err(Error::DuplicateNodeId(..))));
+        assert!(matches!(res, Err(TopologyError::DuplicateNodeId(..))));
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id);
         let l3 = Link::new(n3.id, n3.id); // error
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
-        assert!(matches!(res, Err(Error::NodeAdjacentSelf(..))));
+        assert!(matches!(res, Err(TopologyError::NodeAdjacentSelf(..))));
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id);
         let l3 = Link::new(NodeId::new(3), n3.id);
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
-        assert!(matches!(res, Err(Error::UndeclaredNode(..))));
+        assert!(matches!(res, Err(TopologyError::UndeclaredNode(..))));
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id);
         let l3 = Link::new(n2.id, n3.id); // error
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
-        assert!(matches!(res, Err(Error::DuplicateLink { .. })));
+        assert!(matches!(res, Err(TopologyError::DuplicateLink { .. })));
     }
 
     #[test]
@@ -181,7 +181,10 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id);
         let l3 = Link::new(n1.id, n4.id); // error
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2, l3]);
-        assert!(matches!(res, Err(Error::TooManyHostLinks { n: 2, .. })));
+        assert!(matches!(
+            res,
+            Err(TopologyError::TooManyHostLinks { n: 2, .. })
+        ));
     }
 
     #[test]
@@ -193,7 +196,7 @@ mod tests {
         let l1 = Link::new(n1.id, n3.id);
         let l2 = Link::new(n2.id, n3.id);
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2]);
-        assert!(matches!(res, Err(Error::IsolatedNode(..))));
+        assert!(matches!(res, Err(TopologyError::IsolatedNode(..))));
     }
 
     #[test]

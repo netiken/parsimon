@@ -7,7 +7,7 @@ use petgraph::{
 
 use crate::network::{
     topology::Topology,
-    types::{NodeId, NodeKind},
+    types::{Channel, NodeId, NodeKind},
 };
 
 pub(super) type HopMatrix = HashMap<NodeId, HopMap>;
@@ -20,7 +20,7 @@ pub(super) struct Routes {
 
 impl Routes {
     /// Builds a routing table from a topology using BFS.
-    pub(super) fn new(topology: &Topology) -> Self {
+    pub(super) fn new(topology: &Topology<Channel>) -> Self {
         let g = &topology.graph;
         let mut hops = HopMatrix::new();
         for start in g.node_indices() {
@@ -68,7 +68,6 @@ impl Routes {
     }
 }
 
-// TODO: write tests
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
