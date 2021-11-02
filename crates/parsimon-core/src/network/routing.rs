@@ -80,7 +80,7 @@ mod tests {
     type SortedHopMatrix = BTreeMap<NodeId, SortedHopMap>;
     type SortedHopMap = BTreeMap<NodeId, Vec<NodeId>>;
 
-    /// Generate a stable sorting of the hop matrix for tests
+    /// Generate a stable sorting of the hop matrix for snapshot tests
     fn sorted_hop_matrix(matrix: &HopMatrix) -> SortedHopMatrix {
         matrix
             .iter()
@@ -108,28 +108,10 @@ mod tests {
         let topo = Topology::new(&[n1, n2, n3], &[l1, l2]).context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
-        insta::assert_yaml_snapshot!(hops, @r###"
-        ---
-        0:
-          1:
-            - 2
-          2:
-            - 2
-        1:
-          0:
-            - 2
-          2:
-            - 2
-        2:
-          0:
-            - 0
-          1:
-            - 1
-        "###);
+        insta::assert_yaml_snapshot!(hops);
         Ok(())
     }
 
-    // TODO: Verify me
     #[test]
     fn route_eight_node_succeeds() -> anyhow::Result<()> {
         // 4 hosts (IDs 0-3), 4 switches (IDs 4 and 5 are ToRs, IDs 6 and 7 are Aggs)
@@ -150,137 +132,7 @@ mod tests {
         let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
-        insta::assert_yaml_snapshot!(hops, @r###"
-        ---
-        0:
-          1:
-            - 4
-          2:
-            - 4
-          3:
-            - 4
-          4:
-            - 4
-          5:
-            - 4
-          6:
-            - 4
-          7:
-            - 4
-        1:
-          0:
-            - 4
-          2:
-            - 4
-          3:
-            - 4
-          4:
-            - 4
-          5:
-            - 4
-          6:
-            - 4
-          7:
-            - 4
-        2:
-          0:
-            - 5
-          1:
-            - 5
-          3:
-            - 5
-          4:
-            - 5
-          5:
-            - 5
-          6:
-            - 5
-          7:
-            - 5
-        3:
-          0:
-            - 5
-          1:
-            - 5
-          2:
-            - 5
-          4:
-            - 5
-          5:
-            - 5
-          6:
-            - 5
-          7:
-            - 5
-        4:
-          0:
-            - 0
-          1:
-            - 1
-          2:
-            - 6
-            - 7
-          3:
-            - 6
-            - 7
-          5:
-            - 6
-            - 7
-          6:
-            - 6
-          7:
-            - 7
-        5:
-          0:
-            - 6
-            - 7
-          1:
-            - 6
-            - 7
-          2:
-            - 2
-          3:
-            - 3
-          4:
-            - 6
-            - 7
-          6:
-            - 6
-          7:
-            - 7
-        6:
-          0:
-            - 4
-          1:
-            - 4
-          2:
-            - 5
-          3:
-            - 5
-          4:
-            - 4
-          5:
-            - 5
-          7:
-            - 4
-            - 5
-        7:
-          0:
-            - 4
-          1:
-            - 4
-          2:
-            - 5
-          3:
-            - 5
-          4:
-            - 4
-          5:
-            - 5
-          6:
-            - 4
-            - 5
-        "###);
+        insta::assert_yaml_snapshot!(hops);
         Ok(())
     }
 }
