@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use petgraph::graph::DiGraph;
+use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
 use crate::{
     network::types::{Channel, Link, Node, NodeId},
@@ -10,6 +10,19 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct Topology<C> {
     pub(crate) graph: DiGraph<Node, C>,
+    pub(crate) id2idx: HashMap<NodeId, NodeIndex>,
+}
+
+impl<C> Topology<C> {
+    delegate::delegate! {
+        to self.graph {
+            pub(crate) fn find_edge(&self, src: NodeIndex, dst:NodeIndex) -> Option<EdgeIndex>;
+        }
+        to self.id2idx {
+            #[call(get)]
+            pub(crate) fn idx_of(&self, id: &NodeId) -> Option<&NodeIndex>;
+        }
+    }
 }
 
 impl Topology<Channel> {
@@ -67,7 +80,7 @@ impl Topology<Channel> {
                     n2: g[b].id,
                 });
             }
-            // CORRECTNESS: Every host node should only have one link
+            // CORRECTNESS: Every host node should only have one link.
             let Node { id, kind, .. } = g[a];
             if matches!(kind, NodeKind::Host) {
                 let nr_outgoing = g.edges(a).count();
@@ -76,7 +89,7 @@ impl Topology<Channel> {
                 }
             }
         }
-        Ok(Self { graph: g })
+        Ok(Self { graph: g, id2idx })
     }
 }
 

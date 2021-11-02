@@ -41,8 +41,8 @@ impl Routes {
                             queue.push_back(succ);
                         }
                     }
-                    // In this function, we do not assume there is a 1:1 mapping between `NodeId`s
-                    // and `NodeIndex`s, but it may be enforced elsewhere
+                    // In this function, we do not assume `NodeId`s and `NodeIndex`s are exactly
+                    // the same, but it may be enforced elsewhere
                     if *distances.get(&succ).unwrap() == cur_distance + 1 {
                         hops.entry(g[succ].id)
                             .or_default()

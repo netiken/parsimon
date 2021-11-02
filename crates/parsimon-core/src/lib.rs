@@ -10,9 +10,10 @@ mod client;
 mod linksim;
 mod mapping;
 mod network;
+mod run;
 mod spec;
 
-mod run;
+pub(crate) mod utils;
 
 // TODO: Clean these up
 pub use client::VClient;
