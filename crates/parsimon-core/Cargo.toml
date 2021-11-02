@@ -14,3 +14,4 @@ thiserror = "1.0.30"
 
 [dev-dependencies]
 anyhow = "1.0.44"
+insta = "1.8.0"

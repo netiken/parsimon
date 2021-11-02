@@ -13,7 +13,7 @@ use crate::network::{
 pub(super) type HopMatrix = HashMap<NodeId, HopMap>;
 pub(super) type HopMap = HashMap<NodeId, Vec<NodeId>>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub(super) struct Routes {
     inner: HopMatrix,
 }
@@ -71,8 +71,18 @@ impl Routes {
 // TODO: write tests
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use super::*;
     use crate::network::types::{Link, Node};
+    use anyhow::Context;
+
+    type SortedHopMatrix = BTreeMap<NodeId, SortedHopMap>;
+    type SortedHopMap = BTreeMap<NodeId, Vec<NodeId>>;
+
+    fn sorted_hop_matrix(matrix: &HopMatrix) -> SortedHopMatrix {
+        todo!()
+    }
 
     #[test]
     fn route_three_node_succeeds() -> anyhow::Result<()> {
@@ -81,7 +91,27 @@ mod tests {
         let n3 = Node::new_switch(NodeId::new(2));
         let l1 = Link::new(n1.id, n3.id);
         let l2 = Link::new(n2.id, n3.id);
-        let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
-        todo!()
+        let topo = Topology::new(&[n1, n2, n3], &[l1, l2]).context("failed to create topology")?;
+        let routes = Routes::new(&topo);
+        insta::assert_yaml_snapshot!(routes, @r###"
+        ---
+        inner:
+          0:
+            2:
+              - 2
+            1:
+              - 2
+          2:
+            1:
+              - 1
+            0:
+              - 0
+          1:
+            0:
+              - 2
+            2:
+              - 2
+        "###);
+        Ok(())
     }
 }
