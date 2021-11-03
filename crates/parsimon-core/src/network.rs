@@ -26,6 +26,9 @@ impl Network {
         Ok(Self { topology, routes })
     }
 
+    // TODO: turn this into something else
+    // pub(crate) fn into_
+
     pub(crate) fn edges_indices_between(
         &self,
         src: NodeId,
