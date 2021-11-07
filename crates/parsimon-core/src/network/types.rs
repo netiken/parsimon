@@ -51,11 +51,18 @@ pub(crate) struct TracedChannel {
 }
 
 impl TracedChannel {
-    pub(crate) fn new(chan: Channel, flows: Vec<Flow>) -> Self {
+    pub(crate) fn new_empty(chan: &Channel) -> Self {
         Self {
             src: chan.src,
             dst: chan.dst,
-            flows,
+            flows: Vec::new(),
+        }
+    }
+
+    delegate::delegate! {
+        to self.flows {
+            #[call(push)]
+            pub(crate) fn push_flow(&mut self, flow:Flow);
         }
     }
 }

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
 use crate::{
-    network::types::{Channel, Link, Node, NodeId},
+    network::types::{Channel, Link, Node, NodeId, TracedChannel},
     NodeKind,
 };
 
@@ -90,6 +90,26 @@ impl Topology<Channel> {
             }
         }
         Ok(Self { graph: g, id2idx })
+    }
+}
+
+impl Topology<TracedChannel> {
+    pub(crate) fn new_empty(topology: &Topology<Channel>) -> Self {
+        // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
+        // iteration order matches the order of indices.
+        let mut g = DiGraph::new();
+        for node in topology.graph.node_weights() {
+            g.add_node(node.clone());
+        }
+        for eidx in topology.graph.edge_indices() {
+            let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
+            let chan = &topology.graph[eidx];
+            g.add_edge(a, b, TracedChannel::new_empty(&chan));
+        }
+        Topology {
+            graph: g,
+            id2idx: topology.id2idx.clone(),
+        }
     }
 }
 

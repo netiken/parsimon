@@ -5,7 +5,7 @@ pub(crate) mod types;
 use petgraph::graph::EdgeIndex;
 use rand::{seq::SliceRandom, Rng};
 
-use crate::{client::Flow, Link, Node, TopologyError};
+use crate::{client::Flow, utils, Link, Node, TopologyError};
 
 use self::{
     routing::Routes,
@@ -26,20 +26,38 @@ impl Network {
         Ok(Self { topology, routes })
     }
 
-    // TODO: turn this into something else
-    // pub(crate) fn into_
+    /// Create a `SimNetwork`.
+    ///
+    /// PRECONDITION: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
+    /// `network`.
+    pub(crate) fn sim_network(&self, flows: Vec<Flow>) -> SimNetwork {
+        let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
+        for flow @ Flow { src, dst, .. } in flows {
+            let hash = utils::calculate_hash(&flow);
+            let path = self.edges_indices_between(src, dst, |choices| {
+                let idx = hash as usize % choices.len();
+                Some(&choices[idx])
+            });
+            for eidx in path {
+                // TODO: Store flow IDs instead of the flows themselves
+                topology.graph[eidx].push_flow(flow.clone());
+            }
+        }
+        todo!()
+    }
 
     pub(crate) fn edges_indices_between(
         &self,
         src: NodeId,
         dst: NodeId,
-        mut rng: impl Rng,
+        choose: impl Fn(&[NodeId]) -> Option<&NodeId>,
     ) -> impl Iterator<Item = EdgeIndex> {
         let mut acc = Vec::new();
         let mut cur = src;
         while cur != dst {
             let next_hop_choices = self.routes.next_hops_unchecked(cur, dst);
-            match next_hop_choices.choose(&mut rng) {
+            // match next_hop_choices.choose(&mut rng) {
+            match choose(next_hop_choices) {
                 Some(&next_hop) => {
                     // These indices are all guaranteed to exist because we have a valid topology
                     let i = *self.topology.idx_of(&cur).unwrap();
@@ -61,18 +79,7 @@ pub(crate) struct SimNetwork {
     routes: Routes,
 }
 
-impl SimNetwork {
-    /// Create a `SimNetwork`.
-    ///
-    /// PRECONDITION: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
-    /// `network`.
-    pub(crate) fn new(network: &Network, flows: Vec<Flow>) -> Self {
-        Self {
-            topology: todo!(),
-            routes: network.routes.clone(),
-        }
-    }
-}
+impl SimNetwork {}
 
 #[derive(Debug)]
 pub struct DelayNetwork;

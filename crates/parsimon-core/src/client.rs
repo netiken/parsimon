@@ -1,5 +1,6 @@
 use crate::network::types::NodeId;
 
+identifier!(FlowId, usize);
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
 
@@ -28,9 +29,12 @@ pub(crate) struct Client {
     flows: Vec<Flow>,
 }
 
-#[derive(Debug)]
+// TODO: !!!!! Figure out how specifying and identifying flows should work. Context is that I want
+// to store flows in `TracedChannel` by ID instead of by value.
+#[derive(Debug, Clone, Hash)]
 pub(crate) struct Flow {
     pub(crate) client: ClientId,
+    pub(crate) id: FlowId,
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) size: u64,
