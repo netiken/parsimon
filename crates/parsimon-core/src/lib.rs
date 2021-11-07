@@ -15,6 +15,9 @@ mod spec;
 
 pub(crate) mod utils;
 
+#[cfg(test)]
+pub(crate) mod testing;
+
 // TODO: Clean these up
 pub use client::VClient;
 pub use linksim::LinkSim;

@@ -73,7 +73,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
-    use crate::network::types::{Link, Node};
+    use crate::testing;
     use anyhow::Context;
 
     type SortedHopMatrix = BTreeMap<NodeId, SortedHopMap>;
@@ -99,12 +99,7 @@ mod tests {
 
     #[test]
     fn route_three_node_succeeds() -> anyhow::Result<()> {
-        let n1 = Node::new_host(NodeId::new(0));
-        let n2 = Node::new_host(NodeId::new(1));
-        let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let topo = Topology::new(&[n1, n2, n3], &[l1, l2]).context("failed to create topology")?;
+        let topo = testing::three_node_topology().context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
         insta::assert_yaml_snapshot!(hops);
@@ -113,22 +108,7 @@ mod tests {
 
     #[test]
     fn route_eight_node_succeeds() -> anyhow::Result<()> {
-        // 4 hosts (IDs 0-3), 4 switches (IDs 4 and 5 are ToRs, IDs 6 and 7 are Aggs)
-        let hosts = (0..=3).map(|i| Node::new_host(NodeId::new(i)));
-        let switches = (4..=7).map(|i| Node::new_switch(NodeId::new(i)));
-        let nodes = hosts.chain(switches).collect::<Vec<_>>();
-        // Each ToR is connected to 2 hosts
-        let mut links = Vec::new();
-        links.push(Link::new(nodes[0].id, nodes[4].id));
-        links.push(Link::new(nodes[1].id, nodes[4].id));
-        links.push(Link::new(nodes[2].id, nodes[5].id));
-        links.push(Link::new(nodes[3].id, nodes[5].id));
-        // Each ToR is connected to both Aggs
-        links.push(Link::new(nodes[4].id, nodes[6].id));
-        links.push(Link::new(nodes[4].id, nodes[7].id));
-        links.push(Link::new(nodes[5].id, nodes[6].id));
-        links.push(Link::new(nodes[5].id, nodes[7].id));
-        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
+        let topo = testing::eight_node_topology().context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
         insta::assert_yaml_snapshot!(hops);

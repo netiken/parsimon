@@ -32,18 +32,20 @@ impl Network {
     /// `network`.
     pub(crate) fn sim_network(&self, flows: Vec<Flow>) -> SimNetwork {
         let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
-        for flow @ Flow { src, dst, .. } in flows {
-            let hash = utils::calculate_hash(&flow);
+        for Flow { id, src, dst, .. } in flows {
+            let hash = utils::calculate_hash(&id);
             let path = self.edges_indices_between(src, dst, |choices| {
                 let idx = hash as usize % choices.len();
                 Some(&choices[idx])
             });
             for eidx in path {
-                // TODO: Store flow IDs instead of the flows themselves
-                topology.graph[eidx].push_flow(flow.clone());
+                topology.graph[eidx].push_flow(id);
             }
         }
-        todo!()
+        SimNetwork {
+            topology,
+            routes: self.routes.clone(),
+        }
     }
 
     pub(crate) fn edges_indices_between(
@@ -56,7 +58,6 @@ impl Network {
         let mut cur = src;
         while cur != dst {
             let next_hop_choices = self.routes.next_hops_unchecked(cur, dst);
-            // match next_hop_choices.choose(&mut rng) {
             match choose(next_hop_choices) {
                 Some(&next_hop) => {
                     // These indices are all guaranteed to exist because we have a valid topology

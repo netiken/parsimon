@@ -4,6 +4,27 @@ identifier!(FlowId, usize);
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct UniqFlowId {
+    inner: (ClientId, FlowId),
+}
+
+impl UniqFlowId {
+    pub(crate) fn new(client: ClientId, flow: FlowId) -> Self {
+        Self {
+            inner: (client, flow),
+        }
+    }
+
+    pub(crate) fn client(&self) -> ClientId {
+        self.inner.0
+    }
+
+    pub(crate) fn flow(&self) -> FlowId {
+        self.inner.1
+    }
+}
+
 #[derive(Debug)]
 pub struct VClient {
     id: ClientId,
@@ -14,7 +35,7 @@ pub struct VClient {
 
 #[derive(Debug)]
 pub(crate) struct VFlow {
-    pub(crate) client: ClientId,
+    pub(crate) id: UniqFlowId,
     pub(crate) src: VNodeId,
     pub(crate) dst: VNodeId,
     pub(crate) size: u64,
@@ -29,12 +50,9 @@ pub(crate) struct Client {
     flows: Vec<Flow>,
 }
 
-// TODO: !!!!! Figure out how specifying and identifying flows should work. Context is that I want
-// to store flows in `TracedChannel` by ID instead of by value.
 #[derive(Debug, Clone, Hash)]
 pub(crate) struct Flow {
-    pub(crate) client: ClientId,
-    pub(crate) id: FlowId,
+    pub(crate) id: UniqFlowId,
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) size: u64,

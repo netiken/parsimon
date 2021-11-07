@@ -1,6 +1,6 @@
-use crate::client::Flow;
+use crate::client::UniqFlowId;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeId,
     pub kind: NodeKind,
@@ -22,7 +22,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKind {
     Host,
     Switch,
@@ -37,7 +37,7 @@ pub struct Link {
     pub b: NodeId,
 }
 
-#[derive(Debug, derive_new::new)]
+#[derive(Debug, PartialEq, Eq, derive_new::new)]
 pub(crate) struct Channel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
@@ -47,7 +47,7 @@ pub(crate) struct Channel {
 pub(crate) struct TracedChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
-    pub(crate) flows: Vec<Flow>,
+    pub(crate) flows: Vec<UniqFlowId>,
 }
 
 impl TracedChannel {
@@ -62,7 +62,7 @@ impl TracedChannel {
     delegate::delegate! {
         to self.flows {
             #[call(push)]
-            pub(crate) fn push_flow(&mut self, flow:Flow);
+            pub(crate) fn push_flow(&mut self, flow: UniqFlowId);
         }
     }
 }

@@ -136,7 +136,10 @@ pub enum TopologyError {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Context;
+
     use super::*;
+    use crate::testing;
 
     #[test]
     fn empty_topology_succeeds() {
@@ -148,13 +151,12 @@ mod tests {
 
     #[test]
     fn three_node_topology_succeeds() {
-        let n1 = Node::new_host(NodeId::new(0));
-        let n2 = Node::new_host(NodeId::new(1));
-        let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
-        assert!(res.is_ok());
+        assert!(testing::three_node_topology().is_ok())
+    }
+
+    #[test]
+    fn eight_node_topology_succeeds() {
+        assert!(testing::eight_node_topology().is_ok())
     }
 
     #[test]
@@ -233,23 +235,17 @@ mod tests {
     }
 
     #[test]
-    fn eight_node_topology_succeeds() {
-        // 4 hosts (IDs 0-3), 4 switches (IDs 4 and 5 are ToRs, IDs 6 and 7 are Aggs)
-        let hosts = (0..=3).map(|i| Node::new_host(NodeId::new(i)));
-        let switches = (4..=7).map(|i| Node::new_switch(NodeId::new(i)));
-        let nodes = hosts.chain(switches).collect::<Vec<_>>();
-        // Each ToR is connected to 2 hosts
-        let mut links = Vec::new();
-        links.push(Link::new(nodes[0].id, nodes[4].id));
-        links.push(Link::new(nodes[1].id, nodes[4].id));
-        links.push(Link::new(nodes[2].id, nodes[5].id));
-        links.push(Link::new(nodes[3].id, nodes[5].id));
-        // Each ToR is connected to both Aggs
-        links.push(Link::new(nodes[4].id, nodes[6].id));
-        links.push(Link::new(nodes[4].id, nodes[7].id));
-        links.push(Link::new(nodes[5].id, nodes[6].id));
-        links.push(Link::new(nodes[5].id, nodes[7].id));
-        let res = Topology::new(&nodes, &links);
-        assert!(res.is_ok());
+    fn topo_channel_topo_traced_channel_equiv() -> anyhow::Result<()> {
+        let topo1 = testing::eight_node_topology().context("failed to create topology")?;
+        let topo2 = Topology::<TracedChannel>::new_empty(&topo1);
+        // Iteration order matches the order of indices
+        for (n1, n2) in topo1.graph.node_weights().zip(topo2.graph.node_weights()) {
+            assert_eq!(n1, n2);
+        }
+        for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
+            let e2 = &Channel::new(e2.src, e2.dst);
+            assert_eq!(e1, e2);
+        }
+        Ok(())
     }
 }
