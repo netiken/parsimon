@@ -14,10 +14,13 @@ pub(crate) struct Topology<C> {
 }
 
 impl<C> Topology<C> {
+    pub(crate) fn find_edge(&self, src: NodeId, dst: NodeId) -> Option<EdgeIndex> {
+        self.idx_of(&src)
+            .and_then(|&a| self.idx_of(&dst).map(|&b| (a, b)))
+            .and_then(|(a, b)| self.graph.find_edge(a, b))
+    }
+
     delegate::delegate! {
-        to self.graph {
-            pub(crate) fn find_edge(&self, src: NodeIndex, dst:NodeIndex) -> Option<EdgeIndex>;
-        }
         to self.id2idx {
             #[call(get)]
             pub(crate) fn idx_of(&self, id: &NodeId) -> Option<&NodeIndex>;
@@ -149,14 +152,18 @@ mod tests {
         );
     }
 
+    // TODO: Make this a snapshot test
     #[test]
     fn three_node_topology_succeeds() {
-        assert!(testing::three_node_topology().is_ok())
+        let (nodes, links) = testing::three_node_config();
+        assert!(Topology::new(&nodes, &links).is_ok())
     }
 
+    // TODO: Make this a snapshot test
     #[test]
     fn eight_node_topology_succeeds() {
-        assert!(testing::eight_node_topology().is_ok())
+        let (nodes, links) = testing::eight_node_config();
+        assert!(Topology::new(&nodes, &links).is_ok())
     }
 
     #[test]
@@ -236,7 +243,8 @@ mod tests {
 
     #[test]
     fn topo_channel_topo_traced_channel_equiv() -> anyhow::Result<()> {
-        let topo1 = testing::eight_node_topology().context("failed to create topology")?;
+        let (nodes, links) = testing::eight_node_config();
+        let topo1 = Topology::new(&nodes, &links).context("failed to create topology")?;
         let topo2 = Topology::<TracedChannel>::new_empty(&topo1);
         // Iteration order matches the order of indices
         for (n1, n2) in topo1.graph.node_weights().zip(topo2.graph.node_weights()) {

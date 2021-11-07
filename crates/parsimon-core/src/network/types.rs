@@ -1,6 +1,6 @@
 use crate::client::UniqFlowId;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Node {
     pub id: NodeId,
     pub kind: NodeKind,
@@ -22,7 +22,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum NodeKind {
     Host,
     Switch,
@@ -37,13 +37,13 @@ pub struct Link {
     pub b: NodeId,
 }
 
-#[derive(Debug, PartialEq, Eq, derive_new::new)]
+#[derive(Debug, PartialEq, Eq, derive_new::new, serde::Serialize)]
 pub(crate) struct Channel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
 pub(crate) struct TracedChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,

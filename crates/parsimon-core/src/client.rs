@@ -1,27 +1,31 @@
+use std::fmt::Display;
+
 use crate::network::types::NodeId;
 
 identifier!(FlowId, usize);
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct UniqFlowId {
-    inner: (ClientId, FlowId),
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+pub(crate) struct UniqFlowId((ClientId, FlowId));
 
 impl UniqFlowId {
     pub(crate) fn new(client: ClientId, flow: FlowId) -> Self {
-        Self {
-            inner: (client, flow),
-        }
+        Self((client, flow))
     }
 
     pub(crate) fn client(&self) -> ClientId {
-        self.inner.0
+        self.0 .0
     }
 
     pub(crate) fn flow(&self) -> FlowId {
-        self.inner.1
+        self.0 .1
+    }
+}
+
+impl Display for UniqFlowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.client(), self.flow())
     }
 }
 

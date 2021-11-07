@@ -99,7 +99,8 @@ mod tests {
 
     #[test]
     fn route_three_node_succeeds() -> anyhow::Result<()> {
-        let topo = testing::three_node_topology().context("failed to create topology")?;
+        let (nodes, links) = testing::three_node_config();
+        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
         insta::assert_yaml_snapshot!(hops);
@@ -108,7 +109,8 @@ mod tests {
 
     #[test]
     fn route_eight_node_succeeds() -> anyhow::Result<()> {
-        let topo = testing::eight_node_topology().context("failed to create topology")?;
+        let (nodes, links) = testing::eight_node_config();
+        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         let routes = Routes::new(&topo);
         let hops = sorted_hop_matrix(&routes.inner);
         insta::assert_yaml_snapshot!(hops);
