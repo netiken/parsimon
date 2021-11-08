@@ -98,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn route_three_node_succeeds() -> anyhow::Result<()> {
+    fn route_three_node_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::three_node_config();
         let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         let routes = Routes::new(&topo);
@@ -108,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn route_eight_node_succeeds() -> anyhow::Result<()> {
+    fn route_eight_node_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
         let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         let routes = Routes::new(&topo);

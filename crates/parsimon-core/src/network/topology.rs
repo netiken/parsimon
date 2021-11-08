@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn three_node_topology_succeeds() -> anyhow::Result<()> {
+    fn three_node_topology_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::three_node_config();
         let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         insta::assert_yaml_snapshot!(topo.graph);
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn eight_node_topology_succeeds() -> anyhow::Result<()> {
+    fn eight_node_topology_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
         let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
         insta::assert_yaml_snapshot!(topo.graph);

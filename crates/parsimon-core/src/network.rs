@@ -3,7 +3,6 @@ pub(crate) mod topology;
 pub(crate) mod types;
 
 use petgraph::graph::EdgeIndex;
-use rand::{seq::SliceRandom, Rng};
 
 use crate::{client::Flow, utils, Link, Node, TopologyError};
 
