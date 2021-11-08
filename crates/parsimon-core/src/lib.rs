@@ -8,7 +8,6 @@ mod ident;
 
 mod client;
 mod linksim;
-mod mapping;
 mod network;
 mod run;
 mod spec;
@@ -19,13 +18,12 @@ pub(crate) mod utils;
 pub(crate) mod testing;
 
 // TODO: Clean these up
-pub use client::VClient;
+pub use client::{ClientId, ClientMap, NodeMap, UniqFlowId, VClient, VFlow, VNodeId};
 pub use linksim::LinkSim;
-pub use mapping::{ClientMap, NodeMap};
 pub use network::{
     topology::TopologyError,
     types::{Link, Node, NodeId, NodeKind},
     DelayNetwork, Network,
 };
 pub use run::{run, Error};
-pub use spec::Spec;
+pub use spec::{Spec, SpecError};

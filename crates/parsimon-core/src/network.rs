@@ -29,7 +29,7 @@ impl Network {
     ///
     /// PRECONDITION: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`.
-    pub(crate) fn sim_network(&self, flows: Vec<Flow>) -> SimNetwork {
+    pub(crate) fn with_flows(&self, flows: Vec<Flow>) -> SimNetwork {
         let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
         for Flow { id, src, dst, .. } in flows {
             let hash = utils::calculate_hash(&id);
@@ -116,7 +116,7 @@ mod tests {
                 start: 0,
             })
             .collect::<Vec<_>>();
-        let network = network.sim_network(flows);
+        let network = network.with_flows(flows);
 
         // The ECMP group contains edges (4, 6) and (4, 7)
         let e1 = network

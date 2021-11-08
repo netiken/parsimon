@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::network::types::NodeId;
 
@@ -7,18 +7,18 @@ identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
-pub(crate) struct UniqFlowId((ClientId, FlowId));
+pub struct UniqFlowId((ClientId, FlowId));
 
 impl UniqFlowId {
-    pub(crate) fn new(client: ClientId, flow: FlowId) -> Self {
+    pub fn new(client: ClientId, flow: FlowId) -> Self {
         Self((client, flow))
     }
 
-    pub(crate) fn client(&self) -> ClientId {
+    pub fn client(&self) -> ClientId {
         self.0 .0
     }
 
-    pub(crate) fn flow(&self) -> FlowId {
+    pub fn flow(&self) -> FlowId {
         self.0 .1
     }
 }
@@ -31,26 +31,37 @@ impl Display for UniqFlowId {
 
 #[derive(Debug)]
 pub struct VClient {
-    id: ClientId,
+    pub id: ClientId,
     name: String,
-    nr_nodes: usize,
+    nodes: Vec<VNodeId>,
     flows: Vec<VFlow>,
 }
 
+impl VClient {
+    /// Get a reference to the vclient's nodes.
+    pub fn nodes(&self) -> &[VNodeId] {
+        self.nodes.as_ref()
+    }
+
+    /// Get a reference to the vclient's flows.
+    pub fn flows(&self) -> &[VFlow] {
+        self.flows.as_ref()
+    }
+}
+
 #[derive(Debug)]
-pub(crate) struct VFlow {
-    pub(crate) id: UniqFlowId,
-    pub(crate) src: VNodeId,
-    pub(crate) dst: VNodeId,
-    pub(crate) size: u64,
-    pub(crate) start: u64,
+pub struct VFlow {
+    pub id: UniqFlowId,
+    pub src: VNodeId,
+    pub dst: VNodeId,
+    pub size: u64,
+    pub start: u64,
 }
 
 #[derive(Debug)]
 pub(crate) struct Client {
     id: ClientId,
     name: String,
-    nr_nodes: usize,
     flows: Vec<Flow>,
 }
 
@@ -62,3 +73,9 @@ pub(crate) struct Flow {
     pub(crate) size: u64,
     pub(crate) start: u64,
 }
+
+/// A mapping from clients to their node mappings
+pub type ClientMap = HashMap<ClientId, NodeMap>;
+
+/// A mapping from virtual nodes to physical nodes
+pub type NodeMap = HashMap<VNodeId, NodeId>;

@@ -5,10 +5,11 @@ use crate::Spec;
 /// distributions.
 ///
 /// This function returns an error if the provided mappings in the specification are invalid.
-pub fn run(_spec: Spec) -> Result<DelayNetwork, Error> {
+pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
     // Validate mappings
-    // Build a FlowNet
-    // Use FlowNet to run simulations
+    // Build a SimNetwork
+    let simnet = spec.network.with_flows(todo!());
+    // Use SimNetwork to run simulations
     // Aggregate simulation results into a DelayNet
     todo!()
 }
