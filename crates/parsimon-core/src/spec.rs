@@ -12,18 +12,26 @@ pub struct Spec {
     mappings: ClientMap,
 }
 
+/// A `ValidSpec` is exactly the same thing as a `Spec`, except it can only be created through a
+/// call to `Spec::validate`, and it has public fields.
+#[derive(Debug)]
+pub(crate) struct ValidSpec {
+    pub(crate) network: Network,
+    pub(crate) clients: Vec<VClient>,
+    pub(crate) mappings: ClientMap,
+}
+
 impl Spec {
-    /// Validate a specification.
+    /// Validate a specification, producing a `ValidSpec`.
     ///
     /// Correctness properties:
     ///
     /// - Every flow must have a valid source and destination.
     /// - Every client must have an entry in `ClientMap`.
     /// - Every mapping must be from a valid virtual node to a valid physical node.
-    // 
-    // TODO: Make this return a `ValidatedSpec`
-    // TODO: Test me
-    pub(crate) fn validate(&self) -> Result<(), SpecError> {
+    //
+    // TODO (next): Test me
+    pub(crate) fn validate(self) -> Result<ValidSpec, SpecError> {
         let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
         for client @ VClient { id, .. } in &self.clients {
             let vnodes = client.nodes().iter().copied().collect::<HashSet<_>>();
@@ -59,7 +67,11 @@ impl Spec {
                 None => return Err(SpecError::MissingClientMapping(*id)),
             }
         }
-        Ok(())
+        Ok(ValidSpec {
+            network: self.network,
+            clients: self.clients,
+            mappings: self.mappings,
+        })
     }
 }
 
