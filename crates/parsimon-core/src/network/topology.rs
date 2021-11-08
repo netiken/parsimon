@@ -152,18 +152,20 @@ mod tests {
         );
     }
 
-    // TODO: Make this a snapshot test
     #[test]
-    fn three_node_topology_succeeds() {
+    fn three_node_topology_succeeds() -> anyhow::Result<()> {
         let (nodes, links) = testing::three_node_config();
-        assert!(Topology::new(&nodes, &links).is_ok())
+        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
+        insta::assert_yaml_snapshot!(topo.graph);
+        Ok(())
     }
 
-    // TODO: Make this a snapshot test
     #[test]
-    fn eight_node_topology_succeeds() {
+    fn eight_node_topology_succeeds() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
-        assert!(Topology::new(&nodes, &links).is_ok())
+        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
+        insta::assert_yaml_snapshot!(topo.graph);
+        Ok(())
     }
 
     #[test]

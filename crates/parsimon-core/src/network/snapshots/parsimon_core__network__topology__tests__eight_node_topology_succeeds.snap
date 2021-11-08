@@ -1,0 +1,90 @@
+---
+source: crates/parsimon-core/src/network/topology.rs
+expression: topo.graph
+
+---
+nodes:
+  - id: 0
+    kind: Host
+  - id: 1
+    kind: Host
+  - id: 2
+    kind: Host
+  - id: 3
+    kind: Host
+  - id: 4
+    kind: Switch
+  - id: 5
+    kind: Switch
+  - id: 6
+    kind: Switch
+  - id: 7
+    kind: Switch
+node_holes: []
+edge_property: directed
+edges:
+  - - 0
+    - 4
+    - src: 0
+      dst: 4
+  - - 4
+    - 0
+    - src: 4
+      dst: 0
+  - - 1
+    - 4
+    - src: 1
+      dst: 4
+  - - 4
+    - 1
+    - src: 4
+      dst: 1
+  - - 2
+    - 5
+    - src: 2
+      dst: 5
+  - - 5
+    - 2
+    - src: 5
+      dst: 2
+  - - 3
+    - 5
+    - src: 3
+      dst: 5
+  - - 5
+    - 3
+    - src: 5
+      dst: 3
+  - - 4
+    - 6
+    - src: 4
+      dst: 6
+  - - 6
+    - 4
+    - src: 6
+      dst: 4
+  - - 4
+    - 7
+    - src: 4
+      dst: 7
+  - - 7
+    - 4
+    - src: 7
+      dst: 4
+  - - 5
+    - 6
+    - src: 5
+      dst: 6
+  - - 6
+    - 5
+    - src: 6
+      dst: 5
+  - - 5
+    - 7
+    - src: 5
+      dst: 7
+  - - 7
+    - 5
+    - src: 7
+      dst: 5
+
