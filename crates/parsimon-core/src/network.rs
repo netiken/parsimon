@@ -72,6 +72,13 @@ impl Network {
         }
         acc.into_iter()
     }
+
+    delegate::delegate! {
+        to self.topology.graph {
+            #[call(node_weights)]
+            pub(crate) fn nodes(&self) -> impl Iterator<Item = &Node>;
+        }
+    }
 }
 
 #[derive(Debug)]

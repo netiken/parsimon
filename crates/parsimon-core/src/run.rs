@@ -8,7 +8,7 @@ use crate::Spec;
 pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
     // Validate mappings
     // Build a SimNetwork
-    let simnet = spec.network.with_flows(todo!());
+    // let simnet = spec.network.with_flows(todo!());
     // Use SimNetwork to run simulations
     // Aggregate simulation results into a DelayNet
     todo!()

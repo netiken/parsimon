@@ -2,14 +2,14 @@ use std::collections::HashSet;
 
 use crate::{
     client::{ClientId, ClientMap, UniqFlowId, VClient, VFlow, VNodeId},
-    network::Network,
+    network::{types::NodeId, Network},
 };
 
 #[derive(Debug)]
 pub struct Spec {
-    pub network: Network,
-    pub clients: Vec<VClient>,
-    pub mappings: ClientMap,
+    network: Network,
+    clients: Vec<VClient>,
+    mappings: ClientMap,
 }
 
 impl Spec {
@@ -17,16 +17,17 @@ impl Spec {
     ///
     /// Correctness properties:
     ///
-    /// - For every client `c`, virtual flows in `c.flows` cannot reference more virtual nodes than
-    ///   specified in `c.nr_nodes`.
+    /// - Every flow must have a valid source and destination.
     /// - Every client must have an entry in `ClientMap`.
-    /// 
-    /// TODO (next)
+    /// - Every mapping must be from a valid virtual node to a valid physical node.
+    // 
+    // TODO: Make this return a `ValidatedSpec`
+    // TODO: Test me
     pub(crate) fn validate(&self) -> Result<(), SpecError> {
-        // CORRECTNESS: For every client `c`, virtual flows in `c.flows` cannot reference more
-        // virtual nodes than specified in `c.nr_nodes`.
-        for client in &self.clients {
+        let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
+        for client @ VClient { id, .. } in &self.clients {
             let vnodes = client.nodes().iter().copied().collect::<HashSet<_>>();
+            // CORRECTNESS: Every flow must have a valid source and destination.
             for &VFlow { id, src, dst, .. } in client.flows() {
                 if !vnodes.contains(&src) {
                     return Err(SpecError::InvalidFlowSrc { flow: id, src });
@@ -35,9 +36,30 @@ impl Spec {
                     return Err(SpecError::InvalidFlowDst { flow: id, dst });
                 }
             }
+            match self.mappings.get(&id) {
+                Some(map) => {
+                    // CORRECTNESS: Every mapping must be from a valid virtual node to a valid
+                    // physical node.
+                    for (&vnode, &node) in map.iter() {
+                        if !vnodes.contains(&vnode) {
+                            return Err(SpecError::InvalidMappingFrom {
+                                client: *id,
+                                from: vnode,
+                            });
+                        }
+                        if !nodes.contains(&node) {
+                            return Err(SpecError::InvalidMappingTo {
+                                client: *id,
+                                to: node,
+                            });
+                        }
+                    }
+                }
+                // CORRECTNESS: Every client must have an entry in `ClientMap`.
+                None => return Err(SpecError::MissingClientMapping(*id)),
+            }
         }
-        // TODO (next)
-        todo!()
+        Ok(())
     }
 }
 
@@ -56,5 +78,5 @@ pub enum SpecError {
     InvalidMappingFrom { client: ClientId, from: VNodeId },
 
     #[error("client {client} has no VNode {to}")]
-    InvalidMappingTo { client: ClientId, to: VNodeId },
+    InvalidMappingTo { client: ClientId, to: NodeId },
 }
