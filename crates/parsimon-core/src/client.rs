@@ -29,7 +29,7 @@ impl Display for UniqFlowId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, derive_new::new)]
 pub struct VClient {
     pub id: ClientId,
     name: String,
@@ -46,6 +46,11 @@ impl VClient {
     /// Get a reference to the vclient's flows.
     pub fn flows(&self) -> &[VFlow] {
         self.flows.as_ref()
+    }
+
+    /// Get a mutable reference to the vclient's flows.
+    pub fn flows_mut(&mut self) -> &mut Vec<VFlow> {
+        &mut self.flows
     }
 }
 
