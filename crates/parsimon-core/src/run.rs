@@ -6,10 +6,9 @@ use crate::spec::{Spec, SpecError};
 ///
 /// This function returns an error if the provided mappings in the specification are invalid.
 pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
-    // Validate mappings
     let spec = spec.validate()?;
-    // Build a SimNetwork
-    // let simnet = spec.network.with_flows(todo!());
+    let flows = spec.collect_flows();
+    let _network = spec.network.with_flows(flows);
     // Use SimNetwork to run simulations
     // Aggregate simulation results into a DelayNet
     todo!()

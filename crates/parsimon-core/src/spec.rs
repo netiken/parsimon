@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    client::{ClientId, ClientMap, UniqFlowId, VClient, VFlow, VNodeId},
+    client::{ClientId, ClientMap, Flow, UniqFlowId, VClient, VFlow, VNodeId},
     network::{types::NodeId, Network},
 };
 
@@ -10,15 +10,6 @@ pub struct Spec {
     network: Network,
     clients: Vec<VClient>,
     mappings: ClientMap,
-}
-
-/// A `ValidSpec` is exactly the same thing as a `Spec`, except it can only be created through a
-/// call to `Spec::validate`, and it has public fields.
-#[derive(Debug)]
-pub(crate) struct ValidSpec {
-    pub(crate) network: Network,
-    pub(crate) clients: Vec<VClient>,
-    pub(crate) mappings: ClientMap,
 }
 
 impl Spec {
@@ -70,6 +61,39 @@ impl Spec {
             clients: self.clients,
             mappings: self.mappings,
         })
+    }
+}
+
+/// A `ValidSpec` is exactly the same thing as a `Spec`, except it can only be
+/// created through a call to `Spec::validate`, and it has public fields.
+#[derive(Debug)]
+pub(crate) struct ValidSpec {
+    pub(crate) network: Network,
+    pub(crate) clients: Vec<VClient>,
+    pub(crate) mappings: ClientMap,
+}
+
+impl ValidSpec {
+    /// Collect all the flows in the specification. The virtual flows are
+    /// translated to physical flows, but they are unsorted.
+    pub(crate) fn collect_flows(&self) -> Vec<Flow> {
+        self.clients
+            .iter()
+            .flat_map(|c| {
+                c.flows().iter().map(|vf| {
+                    // The `unwrap`s are justified by the correctness condition in
+                    // `Spec::validate`.
+                    let map = self.mappings.get(&c.id).unwrap();
+                    Flow {
+                        id: vf.id,
+                        src: *map.get(&vf.src).unwrap(),
+                        dst: *map.get(&vf.dst).unwrap(),
+                        size: vf.size,
+                        start: vf.start,
+                    }
+                })
+            })
+            .collect()
     }
 }
 

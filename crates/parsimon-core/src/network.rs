@@ -27,9 +27,10 @@ impl Network {
 
     /// Create a `SimNetwork`.
     ///
-    /// PRECONDITION: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
+    /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`.
-    pub(crate) fn with_flows(&self, flows: Vec<Flow>) -> SimNetwork {
+    pub(crate) fn with_flows(&self, mut flows: Vec<Flow>) -> SimNetwork {
+        flows.sort_by_key(|f| f.start);
         let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
         for Flow { id, src, dst, .. } in flows {
             let hash = utils::calculate_hash(&id);
