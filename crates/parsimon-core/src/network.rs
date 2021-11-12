@@ -110,7 +110,7 @@ mod tests {
     // exactly how many flows should traverse each link in the group, we can
     // check that the final counts are close to equal. If a different hashing
     // algorithm is used, the exact counts will change, and this test will need
-    // to be updated to use a different snapshot.
+    // to be updated to use the new snapshot.
     #[test]
     fn ecmp_replication_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
