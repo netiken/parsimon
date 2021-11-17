@@ -70,7 +70,7 @@ pub(crate) struct Client {
     flows: Vec<Flow>,
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub(crate) struct Flow {
     pub(crate) id: UniqFlowId,
     pub(crate) src: NodeId,

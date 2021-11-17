@@ -23,7 +23,7 @@ pub use linksim::LinkSim;
 pub use network::{
     topology::TopologyError,
     types::{Link, Node, NodeId, NodeKind},
-    DelayNetwork, Network,
+    DelayNetwork, Network, SimNetwork,
 };
 pub use run::{run, Error};
 pub use spec::{Spec, SpecError};

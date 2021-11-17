@@ -32,7 +32,7 @@ impl Network {
     pub(crate) fn with_flows(&self, mut flows: Vec<Flow>) -> SimNetwork {
         flows.sort_by_key(|f| f.start);
         let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
-        for Flow { id, src, dst, .. } in flows {
+        for &Flow { id, src, dst, .. } in &flows {
             let hash = utils::calculate_hash(&id);
             let path = self.edges_indices_between(src, dst, |choices| {
                 let idx = hash as usize % choices.len();
@@ -45,6 +45,7 @@ impl Network {
         SimNetwork {
             topology,
             routes: self.routes.clone(),
+            flows,
         }
     }
 
@@ -83,9 +84,10 @@ impl Network {
 }
 
 #[derive(Debug)]
-pub(crate) struct SimNetwork {
+pub struct SimNetwork {
     topology: Topology<TracedChannel>,
     routes: Routes,
+    flows: Vec<Flow>,
 }
 
 impl SimNetwork {}
