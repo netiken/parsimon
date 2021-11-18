@@ -159,6 +159,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fb9b38af92608140b86b693604b9ffcc5824240a484d1ecd4795bacb2fe88f3"
 
 [[package]]
+name = "linksim-impls"
+version = "0.1.0"
+dependencies = [
+ "parsimon-core",
+]
+
+[[package]]
 name = "parsimon-core"
 version = "0.1.0"
 dependencies = [
@@ -171,6 +178,7 @@ dependencies = [
  "rand",
  "serde",
  "thiserror",
+ "typed-builder",
 ]
 
 [[package]]
@@ -379,6 +387,17 @@ name = "thiserror-impl"
 version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa32fd3f627f367fe16f893e2597ae3c05020f8bba2666a4e6ea73d377e5714b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a46ee5bd706ff79131be9c94e7edcb82b703c487766a114434e5790361cf08c5"
 dependencies = [
  "proc-macro2",
  "quote",

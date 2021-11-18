@@ -1,2 +1,6 @@
 [workspace]
-members = ["crates/parsimon-core", "crates/parsimon-driver"]
+members = [
+    "crates/parsimon-core",
+    "crates/parsimon-driver",
+    "crates/linksim-impls",
+]

@@ -6,7 +6,7 @@ use crate::{
     network::{types::NodeId, Network},
 };
 
-#[derive(Debug)]
+#[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec<S> {
     network: Network,
     clients: Vec<VClient>,

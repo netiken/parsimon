@@ -2,9 +2,9 @@ mod routing;
 pub(crate) mod topology;
 pub mod types;
 
+pub use petgraph::graph::EdgeIndex;
 pub use topology::TopologyError;
-
-use petgraph::graph::EdgeIndex;
+pub use types::*;
 
 use crate::{client::Flow, linksim::LinkSim, utils};
 
