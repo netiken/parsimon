@@ -1,3 +1,4 @@
+use crate::linksim::LinkSim;
 use crate::network::DelayNetwork;
 use crate::spec::{Spec, SpecError};
 
@@ -5,13 +6,12 @@ use crate::spec::{Spec, SpecError};
 /// distributions.
 ///
 /// This function returns an error if the provided mappings in the specification are invalid.
-pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
+pub fn run<S: LinkSim>(spec: Spec<S>) -> Result<DelayNetwork, Error> {
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
-    let _network = spec.network.with_flows(flows);
-    // Use SimNetwork to run simulations
-    // Aggregate simulation results into a DelayNet
-    todo!()
+    let sims = spec.network.into_simulations(flows);
+    let delays = sims.into_delays(spec.linksim);
+    Ok(delays)
 }
 
 #[derive(Debug, thiserror::Error)]

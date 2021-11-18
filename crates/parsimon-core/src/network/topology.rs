@@ -1,11 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+use petgraph::graph::{DiGraph, NodeIndex};
 
-use crate::{
-    network::types::{Channel, Link, Node, NodeId, TracedChannel},
-    NodeKind,
-};
+use crate::network::types::{Channel, Link, Node, NodeId, NodeKind, TracedChannel};
+
+use super::types::EDistChannel;
 
 #[derive(Debug)]
 pub(crate) struct Topology<C> {
@@ -14,12 +13,6 @@ pub(crate) struct Topology<C> {
 }
 
 impl<C> Topology<C> {
-    pub(crate) fn find_edge(&self, src: NodeId, dst: NodeId) -> Option<EdgeIndex> {
-        self.idx_of(&src)
-            .and_then(|&a| self.idx_of(&dst).map(|&b| (a, b)))
-            .and_then(|(a, b)| self.graph.find_edge(a, b))
-    }
-
     delegate::delegate! {
         to self.id2idx {
             #[call(get)]
@@ -51,7 +44,13 @@ impl Topology<Channel> {
         }
         let idx_of = |id| *id2idx.get(&id).unwrap();
         let mut referenced_nodes = HashSet::new();
-        for Link { a, b, .. } in links.iter().cloned() {
+        for Link {
+            a,
+            b,
+            bandwidth,
+            delay,
+        } in links.iter().cloned()
+        {
             // CORRECTNESS: Every link must have distinct endpoints in `nodes`.
             if a == b {
                 return Err(TopologyError::NodeAdjacentSelf(a));
@@ -65,8 +64,8 @@ impl Topology<Channel> {
             referenced_nodes.insert(a);
             referenced_nodes.insert(b);
             // Channels are unidirectional
-            g.add_edge(idx_of(a), idx_of(b), Channel::new(a, b));
-            g.add_edge(idx_of(b), idx_of(a), Channel::new(b, a));
+            g.add_edge(idx_of(a), idx_of(b), Channel::new(a, b, bandwidth, delay));
+            g.add_edge(idx_of(b), idx_of(a), Channel::new(b, a, bandwidth, delay));
         }
         // CORRECTNESS: Every node must be referenced by some link.
         for &id in id2idx.keys() {
@@ -97,7 +96,7 @@ impl Topology<Channel> {
 }
 
 impl Topology<TracedChannel> {
-    pub(crate) fn new_empty(topology: &Topology<Channel>) -> Self {
+    pub(crate) fn new_traced(topology: &Topology<Channel>) -> Self {
         // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
         // iteration order matches the order of indices.
         let mut g = DiGraph::new();
@@ -107,7 +106,27 @@ impl Topology<TracedChannel> {
         for eidx in topology.graph.edge_indices() {
             let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
             let chan = &topology.graph[eidx];
-            g.add_edge(a, b, TracedChannel::new_empty(&chan));
+            g.add_edge(a, b, TracedChannel::new_from(&chan));
+        }
+        Topology {
+            graph: g,
+            id2idx: topology.id2idx.clone(),
+        }
+    }
+}
+
+impl Topology<EDistChannel> {
+    pub(crate) fn new_edist(topology: &Topology<TracedChannel>) -> Self {
+        // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
+        // iteration order matches the order of indices.
+        let mut g = DiGraph::new();
+        for node in topology.graph.node_weights() {
+            g.add_node(node.clone());
+        }
+        for eidx in topology.graph.edge_indices() {
+            let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
+            let chan = &topology.graph[eidx];
+            g.add_edge(a, b, EDistChannel::new_from(&chan));
         }
         Topology {
             graph: g,
@@ -130,7 +149,7 @@ pub enum TopologyError {
     #[error("Duplicate links between {n1} and {n2}")]
     DuplicateLink { n1: NodeId, n2: NodeId },
 
-    #[error("Host {id} has too many links (expected 1, got {n}")]
+    #[error("Host {id} has too many links (expected 1, got {n})")]
     TooManyHostLinks { id: NodeId, n: usize },
 
     #[error("Node {0} is not connected to any other node")]
@@ -142,12 +161,13 @@ mod tests {
     use anyhow::Context;
 
     use super::*;
+    use crate::network::types::{Gbps, Nanosecs};
     use crate::testing;
 
     #[test]
     fn empty_topology_succeeds() {
         assert!(
-            Topology::new(&[], &[]).is_ok(),
+            Topology::<Channel>::new(&[], &[]).is_ok(),
             "failed to create empty topology"
         );
     }
@@ -163,7 +183,7 @@ mod tests {
     #[test]
     fn eight_node_topology_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
-        let topo = Topology::new(&nodes, &links).context("failed to create topology")?;
+        let topo = Topology::<Channel>::new(&nodes, &links).context("failed to create topology")?;
         insta::assert_yaml_snapshot!(topo.graph);
         Ok(())
     }
@@ -173,8 +193,8 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(0)); // error
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::DuplicateNodeId(..))));
     }
@@ -184,9 +204,9 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let l3 = Link::new(n3.id, n3.id); // error
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l3 = Link::new(n3.id, n3.id, Gbps::default(), Nanosecs::default()); // error
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::NodeAdjacentSelf(..))));
     }
@@ -196,9 +216,9 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let l3 = Link::new(NodeId::new(3), n3.id);
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l3 = Link::new(NodeId::new(3), n3.id, Gbps::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::UndeclaredNode(..))));
     }
@@ -208,10 +228,10 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let l3 = Link::new(n2.id, n3.id); // error
-        let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l3 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default()); // error
+        let res = Topology::<Channel>::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::DuplicateLink { .. })));
     }
 
@@ -221,9 +241,9 @@ mod tests {
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
         let n4 = Node::new_switch(NodeId::new(3));
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
-        let l3 = Link::new(n1.id, n4.id); // error
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l3 = Link::new(n1.id, n4.id, Gbps::default(), Nanosecs::default()); // error
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2, l3]);
         assert!(matches!(
             res,
@@ -237,23 +257,24 @@ mod tests {
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
         let n4 = Node::new_host(NodeId::new(3)); // error
-        let l1 = Link::new(n1.id, n3.id);
-        let l2 = Link::new(n2.id, n3.id);
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::IsolatedNode(..))));
     }
 
     #[test]
-    fn topo_channel_topo_traced_channel_equiv() -> anyhow::Result<()> {
+    fn new_topo_old_topo_equiv() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
-        let topo1 = Topology::new(&nodes, &links).context("failed to create topology")?;
-        let topo2 = Topology::<TracedChannel>::new_empty(&topo1);
+        let topo1 =
+            Topology::<Channel>::new(&nodes, &links).context("failed to create topology")?;
+        let topo2 = Topology::new_traced(&topo1);
         // Iteration order matches the order of indices
         for (n1, n2) in topo1.graph.node_weights().zip(topo2.graph.node_weights()) {
             assert_eq!(n1, n2);
         }
         for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
-            let e2 = &Channel::new(e2.src, e2.dst);
+            let e2 = &Channel::new(e2.src, e2.dst, Gbps::ZERO, Nanosecs::ZERO);
             assert_eq!(e1, e2);
         }
         Ok(())

@@ -17,16 +17,24 @@ edges:
     - 2
     - src: 0
       dst: 2
+      bandwidth: 0
+      delay: 0
   - - 2
     - 0
     - src: 2
       dst: 0
+      bandwidth: 0
+      delay: 0
   - - 1
     - 2
     - src: 1
       dst: 2
+      bandwidth: 0
+      delay: 0
   - - 2
     - 1
     - src: 2
       dst: 1
+      bandwidth: 0
+      delay: 0
 

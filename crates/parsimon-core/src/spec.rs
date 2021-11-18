@@ -2,17 +2,19 @@ use std::collections::HashSet;
 
 use crate::{
     client::{ClientId, ClientMap, Flow, UniqFlowId, VClient, VFlow, VNodeId},
+    linksim::LinkSim,
     network::{types::NodeId, Network},
 };
 
 #[derive(Debug)]
-pub struct Spec {
+pub struct Spec<S> {
     network: Network,
     clients: Vec<VClient>,
     mappings: ClientMap,
+    linksim: S,
 }
 
-impl Spec {
+impl<S: LinkSim> Spec<S> {
     /// Validate a specification, producing a `ValidSpec`.
     ///
     /// Correctness properties:
@@ -20,7 +22,7 @@ impl Spec {
     /// - Every flow must have a valid source and destination.
     /// - Every client must have an entry in `ClientMap`.
     /// - Every mapping must be from a valid virtual node to a valid physical node.
-    pub(crate) fn validate(self) -> Result<ValidSpec, SpecError> {
+    pub(crate) fn validate(self) -> Result<ValidSpec<S>, SpecError> {
         let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
         for client @ VClient { id, .. } in &self.clients {
             let vnodes = client.nodes().iter().copied().collect::<HashSet<_>>();
@@ -60,6 +62,7 @@ impl Spec {
             network: self.network,
             clients: self.clients,
             mappings: self.mappings,
+            linksim: self.linksim,
         })
     }
 }
@@ -67,13 +70,14 @@ impl Spec {
 /// A `ValidSpec` is exactly the same thing as a `Spec`, except it can only be
 /// created through a call to `Spec::validate`, and it has public fields.
 #[derive(Debug)]
-pub(crate) struct ValidSpec {
+pub(crate) struct ValidSpec<S> {
     pub(crate) network: Network,
     pub(crate) clients: Vec<VClient>,
     pub(crate) mappings: ClientMap,
+    pub(crate) linksim: S,
 }
 
-impl ValidSpec {
+impl<S: LinkSim> ValidSpec<S> {
     /// Collect all the flows in the specification. The virtual flows are
     /// translated to physical flows, but they are unsorted.
     pub(crate) fn collect_flows(&self) -> Vec<Flow> {
@@ -117,7 +121,11 @@ pub enum SpecError {
 
 #[cfg(test)]
 mod tests {
+    use petgraph::graph::EdgeIndex;
+
     use crate::client::FlowId;
+    use crate::edist::EDistBuckets;
+    use crate::network::SimNetwork;
     use crate::testing;
 
     use super::*;
@@ -194,7 +202,15 @@ mod tests {
         ));
     }
 
-    fn spec() -> Spec {
+    struct TestLinkSim;
+
+    impl LinkSim for TestLinkSim {
+        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> EDistBuckets {
+            unreachable!()
+        }
+    }
+
+    fn spec() -> Spec<TestLinkSim> {
         let network = network();
         let client = client();
         let mappings = mappings();
@@ -202,6 +218,7 @@ mod tests {
             network,
             clients: vec![client],
             mappings,
+            linksim: TestLinkSim,
         }
     }
 

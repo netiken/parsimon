@@ -1,15 +1,17 @@
 mod routing;
 pub(crate) mod topology;
-pub(crate) mod types;
+pub mod types;
+
+pub use topology::TopologyError;
 
 use petgraph::graph::EdgeIndex;
 
-use crate::{client::Flow, utils, Link, Node, TopologyError};
+use crate::{client::Flow, linksim::LinkSim, utils};
 
 use self::{
     routing::Routes,
     topology::Topology,
-    types::{Channel, NodeId, TracedChannel},
+    types::{Channel, EDistChannel, Link, Node, NodeId, TracedChannel},
 };
 
 #[derive(Debug)]
@@ -29,9 +31,9 @@ impl Network {
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`.
-    pub(crate) fn with_flows(&self, mut flows: Vec<Flow>) -> SimNetwork {
+    pub(crate) fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
         flows.sort_by_key(|f| f.start);
-        let mut topology = Topology::<TracedChannel>::new_empty(&self.topology);
+        let mut topology = Topology::new_traced(&self.topology);
         for &Flow { id, src, dst, .. } in &flows {
             let hash = utils::calculate_hash(&id);
             let path = self.edges_indices_between(src, dst, |choices| {
@@ -90,10 +92,27 @@ pub struct SimNetwork {
     flows: Vec<Flow>,
 }
 
-impl SimNetwork {}
+impl SimNetwork {
+    pub(crate) fn into_delays<S: LinkSim>(self, sim: S) -> DelayNetwork {
+        let mut topology = Topology::new_edist(&self.topology);
+        for eidx in self.topology.graph.edge_indices() {
+            // TODO: This should happen in parallel, and it should probably
+            // return a result type
+            let dists = sim.simulate(&self, eidx);
+            topology.graph[eidx].dists = dists;
+        }
+        DelayNetwork {
+            topology,
+            routes: self.routes.clone(),
+        }
+    }
+}
 
 #[derive(Debug)]
-pub struct DelayNetwork;
+pub struct DelayNetwork {
+    topology: Topology<EDistChannel>,
+    routes: Routes,
+}
 
 #[cfg(test)]
 mod tests {
@@ -105,6 +124,12 @@ mod tests {
     };
 
     use super::*;
+
+    fn find_edge<C>(topo: &Topology<C>, src: NodeId, dst: NodeId) -> Option<EdgeIndex> {
+        topo.idx_of(&src)
+            .and_then(|&a| topo.idx_of(&dst).map(|&b| (a, b)))
+            .and_then(|(a, b)| topo.graph.find_edge(a, b))
+    }
 
     // This test creates an eight-node topology and sends some flows with the
     // same source and destination across racks. All flows will traverse
@@ -126,17 +151,11 @@ mod tests {
                 start: 0,
             })
             .collect::<Vec<_>>();
-        let network = network.with_flows(flows);
+        let network = network.into_simulations(flows);
 
         // The ECMP group contains edges (4, 6) and (4, 7)
-        let e1 = network
-            .topology
-            .find_edge(NodeId::new(4), NodeId::new(6))
-            .unwrap();
-        let e2 = network
-            .topology
-            .find_edge(NodeId::new(4), NodeId::new(7))
-            .unwrap();
+        let e1 = find_edge(&network.topology, NodeId::new(4), NodeId::new(6)).unwrap();
+        let e2 = find_edge(&network.topology, NodeId::new(4), NodeId::new(7)).unwrap();
 
         // Flow counts for the links should be close to each other
         insta::assert_yaml_snapshot!((

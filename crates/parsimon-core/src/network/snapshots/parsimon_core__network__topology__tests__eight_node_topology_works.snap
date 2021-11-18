@@ -27,64 +27,96 @@ edges:
     - 4
     - src: 0
       dst: 4
+      bandwidth: 0
+      delay: 0
   - - 4
     - 0
     - src: 4
       dst: 0
+      bandwidth: 0
+      delay: 0
   - - 1
     - 4
     - src: 1
       dst: 4
+      bandwidth: 0
+      delay: 0
   - - 4
     - 1
     - src: 4
       dst: 1
+      bandwidth: 0
+      delay: 0
   - - 2
     - 5
     - src: 2
       dst: 5
+      bandwidth: 0
+      delay: 0
   - - 5
     - 2
     - src: 5
       dst: 2
+      bandwidth: 0
+      delay: 0
   - - 3
     - 5
     - src: 3
       dst: 5
+      bandwidth: 0
+      delay: 0
   - - 5
     - 3
     - src: 5
       dst: 3
+      bandwidth: 0
+      delay: 0
   - - 4
     - 6
     - src: 4
       dst: 6
+      bandwidth: 0
+      delay: 0
   - - 6
     - 4
     - src: 6
       dst: 4
+      bandwidth: 0
+      delay: 0
   - - 4
     - 7
     - src: 4
       dst: 7
+      bandwidth: 0
+      delay: 0
   - - 7
     - 4
     - src: 7
       dst: 4
+      bandwidth: 0
+      delay: 0
   - - 5
     - 6
     - src: 5
       dst: 6
+      bandwidth: 0
+      delay: 0
   - - 6
     - 5
     - src: 6
       dst: 5
+      bandwidth: 0
+      delay: 0
   - - 5
     - 7
     - src: 5
       dst: 7
+      bandwidth: 0
+      delay: 0
   - - 7
     - 5
     - src: 7
       dst: 5
+      bandwidth: 0
+      delay: 0
 
