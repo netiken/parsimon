@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use crate::{
-    client::{ClientId, ClientMap, Flow, UniqFlowId, VClient, VFlow, VNodeId},
+    client::{ClientId, ClientMap, VClient, VFlow, VNodeId},
     linksim::LinkSim,
-    network::{types::NodeId, Network},
+    network::{types::NodeId, Flow, Network, UniqFlowId},
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
@@ -123,10 +123,10 @@ pub enum SpecError {
 mod tests {
     use petgraph::graph::EdgeIndex;
 
-    use crate::client::FlowId;
     use crate::edist::EDistBuckets;
-    use crate::network::SimNetwork;
+    use crate::network::{FlowId, SimNetwork};
     use crate::testing;
+    use crate::units::{Bytes, Nanosecs};
 
     use super::*;
 
@@ -143,8 +143,8 @@ mod tests {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
             src: VNodeId::new(100),
             dst: VNodeId::new(2),
-            size: 0,
-            start: 0,
+            size: Bytes::ZERO,
+            start: Nanosecs::ZERO,
         };
         spec.clients[0].flows_mut().push(flow);
         assert!(matches!(
@@ -160,8 +160,8 @@ mod tests {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
             src: VNodeId::new(0),
             dst: VNodeId::new(100),
-            size: 0,
-            start: 0,
+            size: Bytes::ZERO,
+            start: Nanosecs::ZERO,
         };
         spec.clients[0].flows_mut().push(flow);
         assert!(matches!(
@@ -232,8 +232,8 @@ mod tests {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(0)),
             src: VNodeId::new(0),
             dst: VNodeId::new(2),
-            size: 0,
-            start: 0,
+            size: Bytes::ZERO,
+            start: Nanosecs::ZERO,
         };
         VClient::new(
             ClientId::ZERO,

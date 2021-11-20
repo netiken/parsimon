@@ -1,4 +1,5 @@
-use crate::network::types::{Gbps, Link, Nanosecs, Node, NodeId};
+use crate::network::types::{Link, Node, NodeId};
+use crate::units::{Gbps, Nanosecs};
 
 pub(crate) fn three_node_config() -> (Vec<Node>, Vec<Link>) {
     let n1 = Node::new_host(NodeId::new(0));

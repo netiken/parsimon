@@ -1,4 +1,6 @@
-use crate::{client::UniqFlowId, edist::EDistBuckets};
+use crate::client::ClientId;
+use crate::edist::EDistBuckets;
+use crate::units::{Bytes, Gbps, Nanosecs};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Node {
@@ -111,46 +113,49 @@ impl EDistChannel {
     }
 }
 
-macro_rules! unit {
-    ($name: ident) => {
-        #[derive(
-            Debug,
-            Default,
-            Copy,
-            Clone,
-            PartialOrd,
-            Ord,
-            PartialEq,
-            Eq,
-            Hash,
-            derive_more::Add,
-            derive_more::Sub,
-            derive_more::AddAssign,
-            derive_more::SubAssign,
-            derive_more::Sum,
-            derive_more::Display,
-            derive_more::FromStr,
-            serde::Serialize,
-            serde::Deserialize,
-        )]
-        pub struct $name(u64);
+identifier!(FlowId, usize);
 
-        impl $name {
-            pub const ZERO: $name = Self::new(0);
-            pub const ONE: $name = Self::new(1);
-            pub const MAX: $name = Self::new(u64::MAX);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+pub struct UniqFlowId((ClientId, FlowId));
 
-            pub const fn new(value: u64) -> Self {
-                Self(value)
-            }
+impl UniqFlowId {
+    pub fn new(client: ClientId, flow: FlowId) -> Self {
+        Self((client, flow))
+    }
 
-            pub const fn into_u64(self) -> u64 {
-                self.0
-            }
-        }
-    };
+    pub fn client(&self) -> ClientId {
+        self.0 .0
+    }
+
+    pub fn flow(&self) -> FlowId {
+        self.0 .1
+    }
 }
 
-unit!(Gbps);
-unit!(Nanosecs);
-unit!(Bytes);
+impl std::fmt::Display for UniqFlowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.client(), self.flow())
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash)]
+pub struct Flow {
+    pub id: UniqFlowId,
+    pub src: NodeId,
+    pub dst: NodeId,
+    pub size: Bytes,
+    pub start: Nanosecs,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FctRecord {
+    // From flow
+    pub id: UniqFlowId,
+    pub src: NodeId,
+    pub dst: NodeId,
+    pub size: Bytes,
+    pub start: Nanosecs,
+    // From simulation
+    pub end: Nanosecs,
+    pub ideal: Nanosecs,
+}

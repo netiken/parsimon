@@ -6,12 +6,12 @@ pub use petgraph::graph::EdgeIndex;
 pub use topology::TopologyError;
 pub use types::*;
 
-use crate::{client::Flow, linksim::LinkSim, utils};
+use crate::{linksim::LinkSim, utils};
 
 use self::{
     routing::Routes,
     topology::Topology,
-    types::{Channel, EDistChannel, Link, Node, NodeId, TracedChannel},
+    types::{Channel, EDistChannel, Link, Node, TracedChannel},
 };
 
 #[derive(Debug)]
@@ -118,10 +118,10 @@ pub struct DelayNetwork {
 mod tests {
     use anyhow::Context;
 
-    use crate::{
-        client::{ClientId, FlowId, UniqFlowId},
-        testing,
-    };
+    use crate::client::ClientId;
+    use crate::network::{FlowId, UniqFlowId};
+    use crate::testing;
+    use crate::units::{Bytes, Nanosecs};
 
     use super::*;
 
@@ -147,8 +147,8 @@ mod tests {
                 id: UniqFlowId::new(ClientId::new(0), FlowId::new(i)),
                 src: NodeId::new(0),
                 dst: NodeId::new(3),
-                size: 0,
-                start: 0,
+                size: Bytes::ZERO,
+                start: Nanosecs::ZERO,
             })
             .collect::<Vec<_>>();
         let network = network.into_simulations(flows);

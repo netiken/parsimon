@@ -161,8 +161,8 @@ mod tests {
     use anyhow::Context;
 
     use super::*;
-    use crate::network::types::{Gbps, Nanosecs};
     use crate::testing;
+    use crate::units::{Gbps, Nanosecs};
 
     #[test]
     fn empty_topology_succeeds() {

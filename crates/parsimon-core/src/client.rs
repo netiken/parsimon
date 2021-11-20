@@ -1,33 +1,10 @@
-use std::{collections::HashMap, fmt::Display};
+use std::collections::HashMap;
 
-use crate::network::types::NodeId;
+use crate::network::{Flow, NodeId, UniqFlowId};
+use crate::units::{Bytes, Nanosecs};
 
-identifier!(FlowId, usize);
 identifier!(ClientId, usize);
 identifier!(VNodeId, usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
-pub struct UniqFlowId((ClientId, FlowId));
-
-impl UniqFlowId {
-    pub fn new(client: ClientId, flow: FlowId) -> Self {
-        Self((client, flow))
-    }
-
-    pub fn client(&self) -> ClientId {
-        self.0 .0
-    }
-
-    pub fn flow(&self) -> FlowId {
-        self.0 .1
-    }
-}
-
-impl Display for UniqFlowId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.client(), self.flow())
-    }
-}
 
 #[derive(Debug, derive_new::new)]
 pub struct VClient {
@@ -59,8 +36,8 @@ pub struct VFlow {
     pub id: UniqFlowId,
     pub src: VNodeId,
     pub dst: VNodeId,
-    pub size: u64,
-    pub start: u64,
+    pub size: Bytes,
+    pub start: Nanosecs,
 }
 
 #[derive(Debug)]
@@ -68,15 +45,6 @@ pub(crate) struct Client {
     id: ClientId,
     name: String,
     flows: Vec<Flow>,
-}
-
-#[derive(Debug, Clone, Copy, Hash)]
-pub(crate) struct Flow {
-    pub(crate) id: UniqFlowId,
-    pub(crate) src: NodeId,
-    pub(crate) dst: NodeId,
-    pub(crate) size: u64,
-    pub(crate) start: u64,
 }
 
 /// A mapping from clients to their node mappings
