@@ -1,14 +1,13 @@
 use parsimon_core::{
-    edist::EDistBuckets,
     linksim::LinkSim,
-    network::{EdgeIndex, SimNetwork},
+    network::{EdgeIndex, FctRecord, SimNetwork},
 };
 
 #[derive(Debug)]
 pub struct Ns3Full;
 
 impl LinkSim for Ns3Full {
-    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> EDistBuckets {
+    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> Vec<FctRecord> {
         todo!()
     }
 }

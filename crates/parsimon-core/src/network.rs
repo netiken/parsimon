@@ -99,7 +99,7 @@ impl SimNetwork {
             // TODO: This should happen in parallel, and it should probably
             // return a result type
             let dists = sim.simulate(&self, eidx);
-            topology.graph[eidx].dists = dists;
+            topology.graph[eidx].dists = todo!();
         }
         DelayNetwork {
             topology,

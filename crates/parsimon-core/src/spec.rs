@@ -124,7 +124,7 @@ mod tests {
     use petgraph::graph::EdgeIndex;
 
     use crate::edist::EDistBuckets;
-    use crate::network::{FlowId, SimNetwork};
+    use crate::network::{FctRecord, FlowId, SimNetwork};
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
 
@@ -205,7 +205,7 @@ mod tests {
     struct TestLinkSim;
 
     impl LinkSim for TestLinkSim {
-        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> EDistBuckets {
+        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> Vec<FctRecord> {
             unreachable!()
         }
     }
