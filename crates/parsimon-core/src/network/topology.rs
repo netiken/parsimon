@@ -10,6 +10,7 @@ use super::types::EDistChannel;
 pub(crate) struct Topology<C> {
     pub(crate) graph: DiGraph<Node, C>,
     pub(crate) id2idx: HashMap<NodeId, NodeIndex>,
+    pub(crate) links: Vec<Link>,
 }
 
 impl<C> Topology<C> {
@@ -91,7 +92,11 @@ impl Topology<Channel> {
                 }
             }
         }
-        Ok(Self { graph: g, id2idx })
+        Ok(Self {
+            graph: g,
+            id2idx,
+            links: Vec::from(links),
+        })
     }
 }
 
@@ -111,6 +116,7 @@ impl Topology<TracedChannel> {
         Topology {
             graph: g,
             id2idx: topology.id2idx.clone(),
+            links: topology.links.clone(),
         }
     }
 }
@@ -131,6 +137,7 @@ impl Topology<EDistChannel> {
         Topology {
             graph: g,
             id2idx: topology.id2idx.clone(),
+            links: topology.links.clone(),
         }
     }
 }

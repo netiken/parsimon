@@ -15,7 +15,6 @@ macro_rules! unit {
             derive_more::AddAssign,
             derive_more::SubAssign,
             derive_more::Sum,
-            derive_more::Display,
             derive_more::FromStr,
             serde::Serialize,
             serde::Deserialize,
@@ -39,5 +38,25 @@ macro_rules! unit {
 }
 
 unit!(Gbps);
+
+impl std::fmt::Display for Gbps {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}Gbps", self.0)
+    }
+}
+
 unit!(Nanosecs);
+
+impl std::fmt::Display for Nanosecs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}ns", self.0)
+    }
+}
+
 unit!(Bytes);
+
+impl std::fmt::Display for Bytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}B", self.0)
+    }
+}

@@ -31,7 +31,7 @@ impl Network {
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`.
-    pub(crate) fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
+    pub fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
         flows.sort_by_key(|f| f.start);
         let mut topology = Topology::new_traced(&self.topology);
         for &Flow { id, src, dst, .. } in &flows {
@@ -80,7 +80,11 @@ impl Network {
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]
-            pub(crate) fn nodes(&self) -> impl Iterator<Item = &Node>;
+            pub fn nodes(&self) -> impl Iterator<Item = &Node>;
+        }
+        to self.topology.links {
+            #[call(iter)]
+            pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
     }
 }
@@ -93,7 +97,7 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
-    pub(crate) fn into_delays<S: LinkSim>(self, sim: S) -> DelayNetwork {
+    pub fn into_delays<S: LinkSim>(self, sim: S) -> DelayNetwork {
         let mut topology = Topology::new_edist(&self.topology);
         for eidx in self.topology.graph.edge_indices() {
             // TODO: This should happen in parallel, and it should probably
@@ -106,12 +110,36 @@ impl SimNetwork {
             routes: self.routes.clone(),
         }
     }
+
+    delegate::delegate! {
+        to self.topology.graph {
+            #[call(node_weights)]
+            pub fn nodes(&self) -> impl Iterator<Item = &Node>;
+        }
+        to self.topology.links {
+            #[call(iter)]
+            pub fn links(&self) -> impl Iterator<Item = &Link>;
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
     routes: Routes,
+}
+
+impl DelayNetwork {
+    delegate::delegate! {
+        to self.topology.graph {
+            #[call(node_weights)]
+            pub fn nodes(&self) -> impl Iterator<Item = &Node>;
+        }
+        to self.topology.links {
+            #[call(iter)]
+            pub fn links(&self) -> impl Iterator<Item = &Link>;
+        }
+    }
 }
 
 #[cfg(test)]

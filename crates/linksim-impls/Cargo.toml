@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 parsimon-core = { path = "../parsimon-core" }
+
+[dev-dependencies]
+anyhow = "1.0.48"
+insta = "1.8.0"

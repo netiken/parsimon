@@ -17,5 +17,4 @@ pub mod units;
 
 pub(crate) mod utils;
 
-#[cfg(test)]
-pub(crate) mod testing;
+pub mod testing;
