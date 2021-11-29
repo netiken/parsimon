@@ -1,15 +1,15 @@
 use std::fmt::Write;
 
 use parsimon_core::{
-    linksim::LinkSim,
-    network::{EdgeIndex, FctRecord, NodeKind, SimNetwork},
+    linksim::{LinkSim, LinkSimResult},
+    network::{EdgeIndex, NodeKind, SimNetwork},
 };
 
 #[derive(Debug)]
 pub struct Ns3Full;
 
 impl LinkSim for Ns3Full {
-    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> Vec<FctRecord> {
+    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
         todo!()
     }
 }
@@ -47,8 +47,9 @@ fn ns3_topology(network: &SimNetwork) -> String {
 }
 
 /// Get a string representation of the network flows for input to ns-3.
-/// TODO: Write me next
-fn ns3_flows(network: &SimNetwork) -> String {
+fn ns3_flows(network: &SimNetwork, edge: EdgeIndex) -> String {
+    // let chan =
+    // channel.flows().map(|id|)
     todo!()
 }
 

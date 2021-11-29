@@ -79,9 +79,9 @@ impl TracedChannel {
         self.dst
     }
 
-    /// Get a reference to the traced channel's flows.
-    pub fn flows(&self) -> &[UniqFlowId] {
-        self.flows.as_ref()
+    /// Get an iterator over the traced channel's flow IDs
+    pub fn flows(&self) -> impl Iterator<Item = UniqFlowId> + '_ {
+        self.flows.iter().copied()
     }
 
     delegate::delegate! {

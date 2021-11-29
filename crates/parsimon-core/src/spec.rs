@@ -123,6 +123,7 @@ pub enum SpecError {
 mod tests {
     use petgraph::graph::EdgeIndex;
 
+    use crate::linksim::LinkSimResult;
     use crate::network::{FctRecord, FlowId, SimNetwork};
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
@@ -204,7 +205,7 @@ mod tests {
     struct TestLinkSim;
 
     impl LinkSim for TestLinkSim {
-        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> Vec<FctRecord> {
+        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> LinkSimResult {
             unreachable!()
         }
     }

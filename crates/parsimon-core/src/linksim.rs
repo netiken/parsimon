@@ -2,10 +2,20 @@ use petgraph::graph::EdgeIndex;
 
 use crate::network::{FctRecord, SimNetwork};
 
+pub type LinkSimResult = Result<Vec<FctRecord>, LinkSimError>;
+
 /// An interface for link simulators.
-// TODO: Add error reporting
 pub trait LinkSim {
     /// Given a network and an edge (which will be a [`crate::network::types::TracedChannel`]),
     /// simulate the edge and return a collection of FCT records
-    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> Vec<FctRecord>;
+    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult;
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum LinkSimError {
+    #[error("Edge {} does not exist", .0.index())]
+    UnknownEdge(EdgeIndex),
+
+    #[error(transparent)]
+    Other(anyhow::Error),
 }

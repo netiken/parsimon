@@ -115,7 +115,11 @@ impl SimNetwork {
         to self.topology.graph {
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
+
+            #[call(edge_weight)]
+            pub fn edge(&self, idx: EdgeIndex) -> Option<&TracedChannel>;
         }
+        
         to self.topology.links {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
