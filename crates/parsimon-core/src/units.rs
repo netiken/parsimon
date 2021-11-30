@@ -33,6 +33,11 @@ macro_rules! unit {
             pub const fn into_u64(self) -> u64 {
                 self.0
             }
+
+            pub fn scale_by(self, val: f64) -> Self {
+                let inner = self.0 as f64 * val;
+                Self(inner.round() as u64)
+            }
         }
     };
 }

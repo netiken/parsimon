@@ -41,6 +41,12 @@ pub struct Link {
     pub delay: Nanosecs,
 }
 
+impl Link {
+    pub fn connects(&self, x: NodeId, y: NodeId) -> bool {
+        self.a == x && self.b == y || self.a == y && self.b == x
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, derive_new::new, serde::Serialize)]
 pub(crate) struct Channel {
     pub(crate) src: NodeId,

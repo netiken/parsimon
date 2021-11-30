@@ -281,7 +281,7 @@ mod tests {
             assert_eq!(n1, n2);
         }
         for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
-            let e2 = &Channel::new(e2.src, e2.dst, Gbps::ZERO, Nanosecs::ZERO);
+            let e2 = &Channel::new(e2.src, e2.dst, Gbps::new(100), Nanosecs::new(1000));
             assert_eq!(e1, e2);
         }
         Ok(())

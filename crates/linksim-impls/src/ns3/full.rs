@@ -7,7 +7,10 @@ use std::{
 
 use parsimon_core::{
     linksim::{LinkSim, LinkSimError, LinkSimResult},
-    network::{EdgeIndex, NodeKind, SimNetwork},
+    network::{
+        types::{Link, TracedChannel},
+        EdgeIndex, NodeKind, SimNetwork,
+    },
 };
 
 #[derive(Debug)]
@@ -36,23 +39,37 @@ impl Ns3Full {
 impl LinkSim for Ns3Full {
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
         fs::create_dir_all(&self.root)?;
-        let topology = ns3_topology(network);
+        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
+        let topology = ns3_topology(network, chan);
         self.write_config("topology.txt", &topology)?;
-        let flows = ns3_flows(&network, edge)?;
+        let flows = ns3_flows(network, chan)?;
         self.write_config("flows.txt", &flows)?;
         todo!()
     }
 }
 
-/// Get a string representation of the network topology for input to ns-3.
-/// TODO: All links that aren't the target link need to be huge
-fn ns3_topology(network: &SimNetwork) -> String {
+/// Get a string representation of the network topology for input to ns-3. All links that aren't
+/// the target link are turned into fat links.
+fn ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String {
     let nodes = network.nodes().collect::<Vec<_>>();
     let switches = nodes
         .iter()
         .filter(|&&n| matches!(n.kind, NodeKind::Switch))
         .collect::<Vec<_>>();
-    let links = network.links().collect::<Vec<_>>();
+    let links = network
+        .links()
+        .map(|l| {
+            if l.connects(chan.src(), chan.dst()) {
+                l.to_owned()
+            } else {
+                // Scale the link capacity by a factor of 10
+                Link {
+                    bandwidth: l.bandwidth.scale_by(10.0),
+                    ..*l
+                }
+            }
+        })
+        .collect::<Vec<_>>();
     let mut s = String::new();
     // First line: total node #, switch node #, link #
     writeln!(s, "{} {} {}", nodes.len(), switches.len(), links.len()).unwrap();
@@ -78,12 +95,11 @@ fn ns3_topology(network: &SimNetwork) -> String {
 }
 
 /// Get a string representation of the network flows for input to ns-3.
-fn ns3_flows(network: &SimNetwork, edge: EdgeIndex) -> Result<String, LinkSimError> {
+fn ns3_flows(network: &SimNetwork, chan: &TracedChannel) -> Result<String, LinkSimError> {
     let flow_map = network
         .flows()
         .map(|f| (f.id, f))
         .collect::<HashMap<_, _>>();
-    let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
     let nr_flows = chan.nr_flows();
     // First line: # of flows
     // src0 dst0 3 dst_port0 size0 start_time0
@@ -139,18 +155,20 @@ mod tests {
     #[test]
     fn ns3_topology_correct() -> anyhow::Result<()> {
         let network = test_sim_network()?;
-        let s = ns3_topology(&network);
+        let edge = EdgeIndex::new(0);
+        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
+        let s = ns3_topology(&network, chan);
         insta::assert_snapshot!(s, @r###"
         8 4 8
         4 5 6 7
-        0 4 0Gbps 0ns 0
-        1 4 0Gbps 0ns 0
-        2 5 0Gbps 0ns 0
-        3 5 0Gbps 0ns 0
-        4 6 0Gbps 0ns 0
-        4 7 0Gbps 0ns 0
-        5 6 0Gbps 0ns 0
-        5 7 0Gbps 0ns 0
+        0 4 100Gbps 1000ns 0
+        1 4 1000Gbps 1000ns 0
+        2 5 1000Gbps 1000ns 0
+        3 5 1000Gbps 1000ns 0
+        4 6 1000Gbps 1000ns 0
+        4 7 1000Gbps 1000ns 0
+        5 6 1000Gbps 1000ns 0
+        5 7 1000Gbps 1000ns 0
         "###);
         Ok(())
     }
@@ -158,7 +176,9 @@ mod tests {
     #[test]
     fn ns3_flows_correct() -> anyhow::Result<()> {
         let network = test_sim_network()?;
-        let s = ns3_flows(&network, EdgeIndex::new(0))?;
+        let edge = EdgeIndex::new(0);
+        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
+        let s = ns3_flows(&network, chan)?;
         insta::assert_snapshot!(s, @r###"
         2
         0 1 3 100 1234 1000000000
