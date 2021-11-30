@@ -17,5 +17,8 @@ pub enum LinkSimError {
     UnknownEdge(EdgeIndex),
 
     #[error(transparent)]
-    Other(anyhow::Error),
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }

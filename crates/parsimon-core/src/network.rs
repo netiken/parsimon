@@ -82,6 +82,7 @@ impl Network {
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
         }
+
         to self.topology.links {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
@@ -119,10 +120,15 @@ impl SimNetwork {
             #[call(edge_weight)]
             pub fn edge(&self, idx: EdgeIndex) -> Option<&TracedChannel>;
         }
-        
+
         to self.topology.links {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
+        }
+
+        to self.flows {
+            #[call(iter)]
+            pub fn flows(&self) -> impl Iterator<Item = &Flow>;
         }
     }
 }
@@ -139,6 +145,7 @@ impl DelayNetwork {
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
         }
+
         to self.topology.links {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;

@@ -86,6 +86,9 @@ impl TracedChannel {
 
     delegate::delegate! {
         to self.flows {
+            #[call(len)]
+            pub fn nr_flows(&self) -> usize;
+
             #[call(push)]
             pub(crate) fn push_flow(&mut self, flow: UniqFlowId);
         }
