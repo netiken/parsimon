@@ -32,8 +32,9 @@ impl Ns3Full {
         fs::write(path, contents)
     }
 
-    // TODO
-    // fn run_ns3(&self) ->
+    fn run_ns3(&self) -> cmd_lib::CmdResult {
+        todo!()
+    }
 }
 
 impl LinkSim for Ns3Full {
@@ -44,6 +45,7 @@ impl LinkSim for Ns3Full {
         self.write_config("topology.txt", &topology)?;
         let flows = ns3_flows(network, chan)?;
         self.write_config("flows.txt", &flows)?;
+        self.run_ns3()?;
         todo!()
     }
 }
