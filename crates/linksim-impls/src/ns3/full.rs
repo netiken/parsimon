@@ -1,7 +1,6 @@
 use std::{
-    collections::HashMap,
     fmt::Write,
-    fs, io,
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -13,113 +12,78 @@ use parsimon_core::{
     },
 };
 
+use super::Ns3Sim;
+
 #[derive(Debug)]
 pub struct Ns3Full {
-    root: PathBuf,
+    root_dir: PathBuf,
+    ns3_dir: PathBuf,
 }
 
 impl Ns3Full {
-    pub fn new(dir: impl AsRef<Path>) -> Self {
+    pub fn new(root: impl AsRef<Path>, bin: impl AsRef<Path>) -> Self {
         Self {
-            root: PathBuf::from(dir.as_ref()),
+            root_dir: PathBuf::from(root.as_ref()),
+            ns3_dir: PathBuf::from(bin.as_ref()),
         }
     }
-
-    fn write_config(&self, file: impl AsRef<Path>, contents: &str) -> io::Result<()> {
-        let path = [self.root.as_path(), file.as_ref()]
-            .into_iter()
-            .collect::<PathBuf>();
-        fs::write(path, contents)
-    }
-
-    fn run_ns3(&self) -> cmd_lib::CmdResult {
-        todo!()
-    }
 }
 
-impl LinkSim for Ns3Full {
-    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
-        fs::create_dir_all(&self.root)?;
-        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let topology = ns3_topology(network, chan);
-        self.write_config("topology.txt", &topology)?;
-        let flows = ns3_flows(network, chan)?;
-        self.write_config("flows.txt", &flows)?;
-        self.run_ns3()?;
-        todo!()
+impl Ns3Sim for Ns3Full {
+    fn root_dir(&self) -> &Path {
+        self.root_dir.as_path()
     }
-}
 
-/// Get a string representation of the network topology for input to ns-3. All links that aren't
-/// the target link are turned into fat links.
-fn ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String {
-    let nodes = network.nodes().collect::<Vec<_>>();
-    let switches = nodes
-        .iter()
-        .filter(|&&n| matches!(n.kind, NodeKind::Switch))
-        .collect::<Vec<_>>();
-    let links = network
-        .links()
-        .map(|l| {
-            if l.connects(chan.src(), chan.dst()) {
-                l.to_owned()
-            } else {
-                // Scale the link capacity by a factor of 10
-                Link {
-                    bandwidth: l.bandwidth.scale_by(10.0),
-                    ..*l
+    fn ns3_dir(&self) -> &Path {
+        self.ns3_dir.as_path()
+    }
+
+    fn to_ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String {
+        let nodes = network.nodes().collect::<Vec<_>>();
+        let switches = nodes
+            .iter()
+            .filter(|&&n| matches!(n.kind, NodeKind::Switch))
+            .collect::<Vec<_>>();
+        let links = network
+            .links()
+            .map(|l| {
+                if l.connects(chan.src(), chan.dst()) {
+                    l.to_owned()
+                } else {
+                    // Scale the link capacity by a factor of 10
+                    Link {
+                        bandwidth: l.bandwidth.scale_by(10.0),
+                        ..*l
+                    }
                 }
-            }
-        })
-        .collect::<Vec<_>>();
-    let mut s = String::new();
-    // First line: total node #, switch node #, link #
-    writeln!(s, "{} {} {}", nodes.len(), switches.len(), links.len()).unwrap();
-    // Second line: switch node IDs...
-    let switch_ids = switches
-        .iter()
-        .map(|&&s| s.id.to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    writeln!(s, "{}", switch_ids).unwrap();
-    // src0 dst0 rate delay error_rate
-    // src1 dst1 rate delay error_rate
-    // ...
-    for link in links {
-        writeln!(
-            s,
-            "{} {} {} {} 0",
-            link.a, link.b, link.bandwidth, link.delay
-        )
-        .unwrap();
+            })
+            .collect::<Vec<_>>();
+        let mut s = String::new();
+        // First line: total node #, switch node #, link #
+        writeln!(s, "{} {} {}", nodes.len(), switches.len(), links.len()).unwrap();
+        // Second line: switch node IDs...
+        let switch_ids = switches
+            .iter()
+            .map(|&&s| s.id.to_string())
+            .collect::<Vec<_>>()
+            .join(" ");
+        writeln!(s, "{}", switch_ids).unwrap();
+        // src0 dst0 rate delay error_rate
+        // src1 dst1 rate delay error_rate
+        // ...
+        for link in links {
+            writeln!(
+                s,
+                "{} {} {} {} 0",
+                link.a, link.b, link.bandwidth, link.delay
+            )
+            .unwrap();
+        }
+        s
     }
-    s
 }
 
-/// Get a string representation of the network flows for input to ns-3.
-fn ns3_flows(network: &SimNetwork, chan: &TracedChannel) -> Result<String, LinkSimError> {
-    let flow_map = network
-        .flows()
-        .map(|f| (f.id, f))
-        .collect::<HashMap<_, _>>();
-    let nr_flows = chan.nr_flows();
-    // First line: # of flows
-    // src0 dst0 3 dst_port0 size0 start_time0
-    // src1 dst1 3 dst_port1 size1 start_time1
-    let lines = std::iter::once(nr_flows.to_string())
-        .chain(chan.flows().map(|id| {
-            let f = *flow_map.get(&id).unwrap();
-            format!(
-                "{} {} 3 100 {} {}",
-                f.src,
-                f.dst,
-                f.size.into_u64(),
-                f.start.into_u64()
-            )
-        }))
-        .collect::<Vec<_>>();
-    Ok(lines.join("\n"))
-}
+linksim_impl!(Ns3Full);
 
 #[cfg(test)]
 mod tests {
@@ -159,7 +123,7 @@ mod tests {
         let network = test_sim_network()?;
         let edge = EdgeIndex::new(0);
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let s = ns3_topology(&network, chan);
+        let s = Ns3Full::to_ns3_topology(&network, chan);
         insta::assert_snapshot!(s, @r###"
         8 4 8
         4 5 6 7
@@ -180,12 +144,28 @@ mod tests {
         let network = test_sim_network()?;
         let edge = EdgeIndex::new(0);
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let s = ns3_flows(&network, chan)?;
+        let s = Ns3Full::to_ns3_flows(&network, chan)?;
         insta::assert_snapshot!(s, @r###"
         2
-        0 1 3 100 1234 1000000000
-        0 2 3 100 5678 2000000000
+        0 1 3 100 1234 1
+        0 2 3 100 5678 2
         "###);
+        Ok(())
+    }
+
+    // TODO: This should probably be an integration test
+    #[test]
+    #[ignore]
+    fn ns3_run_succeeds() -> anyhow::Result<()> {
+        const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
+        let root_dir = tempfile::tempdir()?;
+        let ns3_dir = format!(
+            "{}/../../backends/High-Precision-Congestion-Control/simulation",
+            MANIFEST_DIR
+        );
+        let sim = Ns3Full::new(root_dir.path(), ns3_dir);
+        let network = test_sim_network()?;
+        assert_eq!(sim.simulate(&network, EdgeIndex::new(0))?.len(), 2);
         Ok(())
     }
 }
