@@ -1,13 +1,12 @@
 use std::{
     collections::HashMap,
-    fs, io,
     num::ParseIntError,
     path::{Path, PathBuf},
 };
 
 use parsimon_core::{
     linksim::LinkSimError,
-    network::{types::TracedChannel, FctRecord, SimNetwork},
+    network::{types::TracedChannel, FctRecord, NodeId, SimNetwork},
 };
 
 // We can implement `LinkSim` for any type that implements the `Ns3Sim` trait, defined below
@@ -15,14 +14,29 @@ macro_rules! linksim_impl {
     ($ty: ty) => {
         impl LinkSim for $ty {
             fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
-                fs::create_dir_all(&self.root_dir())?;
+                let mk_path = |dir, file| [dir, file].into_iter().collect::<PathBuf>();
+
+                // Prepare directory
                 let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
+                let dir = self.dir_for((chan.src(), chan.dst()));
+                fs::create_dir_all(&dir)?;
+
+                // Write the topology
                 let topology = <$ty>::to_ns3_topology(network, chan);
-                self.write("topology.txt", &topology)?;
+                fs::write(mk_path(dir.as_path(), "topology.txt".as_ref()), &topology)?;
+
+                // Write the flows
                 let flows = <$ty>::to_ns3_flows(network, chan)?;
-                self.write("flows.txt", &flows)?;
-                self.run_ns3()?;
-                let s = self.read("fct_topology_flows_dctcp.txt")?;
+                fs::write(mk_path(dir.as_path(), "flows.txt".as_ref()), &flows)?;
+
+                // Run the simulation
+                self.run_ns3(&dir)?;
+
+                // Read results and return them
+                let s = fs::read_to_string(mk_path(
+                    dir.as_path(),
+                    "fct_topology_flows_dctcp.txt".as_ref(),
+                ))?;
                 let records = <$ty>::from_ns3_records(&s).map_err(|e| anyhow::anyhow!(e))?;
                 Ok(records)
             }
@@ -67,29 +81,22 @@ trait Ns3Sim {
         s.lines().map(|l| FctRecord::from_ns3(l)).collect()
     }
 
-    fn read(&self, file: impl AsRef<Path>) -> io::Result<String> {
-        let path = [self.root_dir(), file.as_ref()]
-            .into_iter()
-            .collect::<PathBuf>();
-        fs::read_to_string(path)
+    fn dir_for(&self, (src, dst): (NodeId, NodeId)) -> PathBuf {
+        let mut dir = PathBuf::new();
+        dir.push(self.root_dir());
+        dir.push(format!("{}-{}", src, dst));
+        dir
     }
 
-    fn write(&self, file: impl AsRef<Path>, contents: &str) -> io::Result<()> {
-        let path = [self.root_dir(), file.as_ref()]
-            .into_iter()
-            .collect::<PathBuf>();
-        fs::write(path, contents)
-    }
-
-    fn run_ns3(&self) -> cmd_lib::CmdResult {
-        let root_dir = self.root_dir();
+    fn run_ns3(&self, dir: impl AsRef<Path>) -> cmd_lib::CmdResult {
+        let dir = dir.as_ref();
         let ns3_dir = self.ns3_dir();
         let extra_args = &[
             "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};
-            python2 run.py --root ${root_dir} $[extra_args] > ${root_dir}/output.txt 2>&1
+            python2 run.py --root ${dir} $[extra_args] > ${dir}/output.txt 2>&1
         }
     }
 }
