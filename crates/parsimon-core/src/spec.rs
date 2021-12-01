@@ -1,15 +1,14 @@
 use std::collections::HashSet;
 
 use crate::{
-    client::Client,
     linksim::LinkSim,
-    network::{types::NodeId, Flow, Network, UniqFlowId},
+    network::{types::NodeId, Flow, FlowId, Network},
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec<S> {
     network: Network,
-    clients: Vec<Client>,
+    flows: Vec<Flow>,
     linksim: S,
 }
 
@@ -18,23 +17,23 @@ impl<S: LinkSim> Spec<S> {
     ///
     /// Correctness properties:
     ///
-    /// - Every flow must have a valid source and destination.
+    /// - Every flow must have a valid source and destination
+    // TODO: Flow IDs should be unique
     pub(crate) fn validate(self) -> Result<ValidSpec<S>, SpecError> {
+        // FIXME: This should only contain the set of hosts
         let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
-        for client in &self.clients {
-            // CORRECTNESS: Every flow must have a valid source and destination.
-            for &Flow { id, src, dst, .. } in client.flows() {
-                if !nodes.contains(&src) {
-                    return Err(SpecError::InvalidFlowSrc { flow: id, src });
-                }
-                if !nodes.contains(&dst) {
-                    return Err(SpecError::InvalidFlowDst { flow: id, dst });
-                }
+        // CORRECTNESS: Every flow must have a valid source and destination.
+        for &Flow { id, src, dst, .. } in &self.flows {
+            if !nodes.contains(&src) {
+                return Err(SpecError::InvalidFlowSrc { flow: id, src });
+            }
+            if !nodes.contains(&dst) {
+                return Err(SpecError::InvalidFlowDst { flow: id, dst });
             }
         }
         Ok(ValidSpec {
             network: self.network,
-            clients: self.clients,
+            flows: self.flows,
             linksim: self.linksim,
         })
     }
@@ -45,35 +44,29 @@ impl<S: LinkSim> Spec<S> {
 #[derive(Debug)]
 pub(crate) struct ValidSpec<S> {
     pub(crate) network: Network,
-    pub(crate) clients: Vec<Client>,
+    pub(crate) flows: Vec<Flow>,
     pub(crate) linksim: S,
 }
 
 impl<S: LinkSim> ValidSpec<S> {
-    /// Collect all the flows in the specification. The virtual flows are
-    /// translated to physical flows, but they are unsorted.
     pub(crate) fn collect_flows(&self) -> Vec<Flow> {
-        self.clients
-            .iter()
-            .flat_map(|c| c.flows().iter().cloned())
-            .collect()
+        self.flows.iter().cloned().collect()
     }
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum SpecError {
     #[error("flow {flow} has an invalid source ({src})")]
-    InvalidFlowSrc { flow: UniqFlowId, src: NodeId },
+    InvalidFlowSrc { flow: FlowId, src: NodeId },
 
     #[error("flow {flow} has an invalid source ({dst})")]
-    InvalidFlowDst { flow: UniqFlowId, dst: NodeId },
+    InvalidFlowDst { flow: FlowId, dst: NodeId },
 }
 
 #[cfg(test)]
 mod tests {
     use petgraph::graph::EdgeIndex;
 
-    use crate::client::ClientId;
     use crate::linksim::LinkSimResult;
     use crate::network::{FlowId, SimNetwork};
     use crate::testing;
@@ -91,13 +84,13 @@ mod tests {
     fn invalid_flow_src_fails() {
         let mut spec = spec();
         let flow = Flow {
-            id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
+            id: FlowId::new(1),
             src: NodeId::new(100),
             dst: NodeId::new(2),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
-        spec.clients[0].flows_mut().push(flow);
+        spec.flows.push(flow);
         assert!(matches!(
             spec.validate(),
             Err(SpecError::InvalidFlowSrc { .. })
@@ -108,13 +101,13 @@ mod tests {
     fn invalid_flow_dst_fails() {
         let mut spec = spec();
         let flow = Flow {
-            id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
+            id: FlowId::new(1),
             src: NodeId::new(0),
             dst: NodeId::new(100),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
-        spec.clients[0].flows_mut().push(flow);
+        spec.flows.push(flow);
         assert!(matches!(
             spec.validate(),
             Err(SpecError::InvalidFlowDst { .. })
@@ -131,10 +124,10 @@ mod tests {
 
     fn spec() -> Spec<TestLinkSim> {
         let network = network();
-        let client = client();
+        let flows = flows();
         Spec {
             network,
-            clients: vec![client],
+            flows,
             linksim: TestLinkSim,
         }
     }
@@ -144,14 +137,14 @@ mod tests {
         Network::new(&nodes, &links).unwrap()
     }
 
-    fn client() -> Client {
+    fn flows() -> Vec<Flow> {
         let flow = Flow {
-            id: UniqFlowId::new(ClientId::new(0), FlowId::new(0)),
+            id: FlowId::new(0),
             src: NodeId::new(0),
             dst: NodeId::new(2),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
-        Client::new(ClientId::ZERO, "test-client".into(), vec![flow])
+        vec![flow]
     }
 }

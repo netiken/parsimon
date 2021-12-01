@@ -171,8 +171,7 @@ impl DelayNetwork {
 mod tests {
     use anyhow::Context;
 
-    use crate::client::ClientId;
-    use crate::network::{FlowId, UniqFlowId};
+    use crate::network::FlowId;
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
 
@@ -197,7 +196,7 @@ mod tests {
         let network = Network::new(&nodes, &links).context("failed to create topology")?;
         let flows = (0..100)
             .map(|i| Flow {
-                id: UniqFlowId::new(ClientId::new(0), FlowId::new(i)),
+                id: FlowId::new(i),
                 src: NodeId::new(0),
                 dst: NodeId::new(3),
                 size: Bytes::ZERO,
@@ -216,8 +215,8 @@ mod tests {
             network.topology.graph[e2].flows.len(),
         ), @r###"
         ---
-        - 42
-        - 58
+        - 55
+        - 45
         "###);
 
         Ok(())

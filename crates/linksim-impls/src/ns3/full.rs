@@ -90,8 +90,7 @@ mod tests {
     use super::*;
 
     use parsimon_core::{
-        client::ClientId,
-        network::{Flow, FlowId, Network, NodeId, UniqFlowId},
+        network::{Flow, FlowId, Network, NodeId},
         testing,
         units::{Bytes, Nanosecs},
     };
@@ -101,14 +100,14 @@ mod tests {
         let network = Network::new(&nodes, &links)?;
         let flows = vec![
             Flow {
-                id: UniqFlowId::new(ClientId::new(0), FlowId::new(0)),
+                id: FlowId::new(0),
                 src: NodeId::new(0),
                 dst: NodeId::new(1),
                 size: Bytes::new(1234),
                 start: Nanosecs::new(1_000_000_000),
             },
             Flow {
-                id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
+                id: FlowId::new(1),
                 src: NodeId::new(0),
                 dst: NodeId::new(2),
                 size: Bytes::new(5678),

@@ -1,4 +1,3 @@
-use crate::client::ClientId;
 use crate::edist::EDistBuckets;
 use crate::units::{Bytes, Gbps, Nanosecs};
 
@@ -61,7 +60,7 @@ pub struct TracedChannel {
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: Gbps,
     pub(crate) delay: Nanosecs,
-    pub(crate) flows: Vec<UniqFlowId>,
+    pub(crate) flows: Vec<FlowId>,
 }
 
 impl TracedChannel {
@@ -86,7 +85,7 @@ impl TracedChannel {
     }
 
     /// Get an iterator over the traced channel's flow IDs
-    pub fn flows(&self) -> impl Iterator<Item = UniqFlowId> + '_ {
+    pub fn flows(&self) -> impl Iterator<Item = FlowId> + '_ {
         self.flows.iter().copied()
     }
 
@@ -96,7 +95,7 @@ impl TracedChannel {
             pub fn nr_flows(&self) -> usize;
 
             #[call(push)]
-            pub(crate) fn push_flow(&mut self, flow: UniqFlowId);
+            pub(crate) fn push_flow(&mut self, flow: FlowId);
         }
     }
 }
@@ -124,32 +123,9 @@ impl EDistChannel {
 
 identifier!(FlowId, usize);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
-pub struct UniqFlowId((ClientId, FlowId));
-
-impl UniqFlowId {
-    pub fn new(client: ClientId, flow: FlowId) -> Self {
-        Self((client, flow))
-    }
-
-    pub fn client(&self) -> ClientId {
-        self.0 .0
-    }
-
-    pub fn flow(&self) -> FlowId {
-        self.0 .1
-    }
-}
-
-impl std::fmt::Display for UniqFlowId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.client(), self.flow())
-    }
-}
-
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct Flow {
-    pub id: UniqFlowId,
+    pub id: FlowId,
     pub src: NodeId,
     pub dst: NodeId,
     pub size: Bytes,
