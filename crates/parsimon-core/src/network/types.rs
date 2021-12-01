@@ -165,3 +165,15 @@ pub struct FctRecord {
     pub fct: Nanosecs,
     pub ideal: Nanosecs,
 }
+
+impl FctRecord {
+    pub fn delay(&self) -> Nanosecs {
+        self.fct - self.ideal
+    }
+
+    pub fn pktnorm_delay(&self) -> f64 {
+        const PKTSIZE_MAX: f64 = 1000.0;
+        let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX).ceil();
+        self.delay().into_f64() / nr_pkts
+    }
+}

@@ -10,6 +10,7 @@ anyhow = "1.0.48"
 delegate = "0.6.1"
 derive-new = "0.5.9"
 derive_more = "0.99.16"
+ordered-float = "2.8.0"
 petgraph = { version = "0.6.0", features = ["serde-1"] }
 rand = "0.8.4"
 serde = { version = "1.0.130", features = ["derive"] }

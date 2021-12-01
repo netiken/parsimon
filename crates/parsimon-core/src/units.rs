@@ -34,6 +34,10 @@ macro_rules! unit {
                 self.0
             }
 
+            pub const fn into_f64(self) -> f64 {
+                self.0 as f64
+            }
+
             pub fn scale_by(self, val: f64) -> Self {
                 let inner = self.0 as f64 * val;
                 Self(inner.round() as u64)

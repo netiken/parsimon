@@ -124,7 +124,7 @@ mod tests {
     use petgraph::graph::EdgeIndex;
 
     use crate::linksim::LinkSimResult;
-    use crate::network::{FctRecord, FlowId, SimNetwork};
+    use crate::network::{FlowId, SimNetwork};
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
 

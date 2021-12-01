@@ -6,7 +6,11 @@ pub use petgraph::graph::EdgeIndex;
 pub use topology::TopologyError;
 pub use types::*;
 
-use crate::{linksim::LinkSim, utils};
+use crate::{
+    edist::EDistError,
+    linksim::{LinkSim, LinkSimError},
+    utils,
+};
 
 use self::{
     routing::Routes,
@@ -98,18 +102,19 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
-    pub fn into_delays<S: LinkSim>(self, sim: S) -> DelayNetwork {
+    pub fn into_delays<S: LinkSim>(self, sim: S) -> Result<DelayNetwork, SimNetworkError> {
         let mut topology = Topology::new_edist(&self.topology);
         for eidx in self.topology.graph.edge_indices() {
-            // TODO: This should happen in parallel, and it should probably
-            // return a result type
-            let dists = sim.simulate(&self, eidx);
-            topology.graph[eidx].dists = todo!();
+            // TODO: This should happen in parallel (somehow)
+            let data = sim.simulate(&self, eidx)?;
+            topology.graph[eidx]
+                .dists
+                .fill(&data, |rec| rec.size, |rec| rec.pktnorm_delay())?;
         }
-        DelayNetwork {
+        Ok(DelayNetwork {
             topology,
             routes: self.routes.clone(),
-        }
+        })
     }
 
     delegate::delegate! {
@@ -131,6 +136,15 @@ impl SimNetwork {
             pub fn flows(&self) -> impl Iterator<Item = &Flow>;
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SimNetworkError {
+    #[error("Failed to simulate link")]
+    LinkSim(#[from] LinkSimError),
+
+    #[error("Failed to construct empirical distribution")]
+    EDist(#[from] EDistError),
 }
 
 #[derive(Debug)]
