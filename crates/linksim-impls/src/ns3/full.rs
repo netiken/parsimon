@@ -88,6 +88,7 @@ linksim_impl!(Ns3Full);
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use parsimon_core::{
         client::ClientId,
         network::{Flow, FlowId, Network, NodeId, UniqFlowId},
@@ -150,22 +151,6 @@ mod tests {
         0 1 3 100 1234 1
         0 2 3 100 5678 2
         "###);
-        Ok(())
-    }
-
-    // TODO: This should probably be an integration test
-    #[test]
-    #[ignore]
-    fn ns3_run_succeeds() -> anyhow::Result<()> {
-        const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
-        let root_dir = tempfile::tempdir()?;
-        let ns3_dir = format!(
-            "{}/../../backends/High-Precision-Congestion-Control/simulation",
-            MANIFEST_DIR
-        );
-        let sim = Ns3Full::new(root_dir.path(), ns3_dir);
-        let network = test_sim_network()?;
-        assert_eq!(sim.simulate(&network, EdgeIndex::new(0))?.len(), 2);
         Ok(())
     }
 }
