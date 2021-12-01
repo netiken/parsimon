@@ -2,12 +2,16 @@ use std::collections::HashSet;
 
 use crate::{
     linksim::LinkSim,
-    network::{types::NodeId, Flow, FlowId, Network},
+    network::{
+        types::{Link, Node, NodeId},
+        Flow, FlowId, Network, NodeKind, TopologyError,
+    },
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec<S> {
-    network: Network,
+    nodes: Vec<Node>,
+    links: Vec<Link>,
     flows: Vec<Flow>,
     linksim: S,
 }
@@ -20,27 +24,35 @@ impl<S: LinkSim> Spec<S> {
     /// - Every flow must have a valid source and destination
     // TODO: Flow IDs should be unique
     pub(crate) fn validate(self) -> Result<ValidSpec<S>, SpecError> {
-        // FIXME: This should only contain the set of hosts
-        let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
+        let hosts = self
+            .nodes
+            .iter()
+            .filter_map(|n| match n.kind {
+                NodeKind::Host => Some(n.id),
+                NodeKind::Switch => None,
+            })
+            .collect::<HashSet<_>>();
         // CORRECTNESS: Every flow must have a valid source and destination.
         for &Flow { id, src, dst, .. } in &self.flows {
-            if !nodes.contains(&src) {
+            if !hosts.contains(&src) {
                 return Err(SpecError::InvalidFlowSrc { flow: id, src });
             }
-            if !nodes.contains(&dst) {
+            if !hosts.contains(&dst) {
                 return Err(SpecError::InvalidFlowDst { flow: id, dst });
             }
         }
+        let network = Network::new(&self.nodes, &self.links)?;
         Ok(ValidSpec {
-            network: self.network,
+            network,
             flows: self.flows,
             linksim: self.linksim,
         })
     }
 }
 
-/// A `ValidSpec` is exactly the same thing as a `Spec`, except it can only be
-/// created through a call to `Spec::validate`, and it has public fields.
+/// A `ValidSpec` is a `Spec` that has been validated. The topology and the
+/// flows are guaranteed to satisfy properties listed in `Network::new()` and
+/// `Spec::validate()`.
 #[derive(Debug)]
 pub(crate) struct ValidSpec<S> {
     pub(crate) network: Network,
@@ -61,6 +73,9 @@ pub enum SpecError {
 
     #[error("flow {flow} has an invalid source ({dst})")]
     InvalidFlowDst { flow: FlowId, dst: NodeId },
+
+    #[error("invalid topology")]
+    InvalidTopology(#[from] TopologyError),
 }
 
 #[cfg(test)]
@@ -123,18 +138,14 @@ mod tests {
     }
 
     fn spec() -> Spec<TestLinkSim> {
-        let network = network();
+        let (nodes, links) = testing::eight_node_config();
         let flows = flows();
         Spec {
-            network,
+            nodes,
+            links,
             flows,
             linksim: TestLinkSim,
         }
-    }
-
-    fn network() -> Network {
-        let (nodes, links) = testing::eight_node_config();
-        Network::new(&nodes, &links).unwrap()
     }
 
     fn flows() -> Vec<Flow> {
