@@ -105,7 +105,7 @@ impl SimNetwork {
     pub fn into_delays<S: LinkSim>(self, sim: S) -> Result<DelayNetwork, SimNetworkError> {
         let mut topology = Topology::new_edist(&self.topology);
         for eidx in self.topology.graph.edge_indices() {
-            // TODO: This should happen in parallel (somehow)
+            // TODO: This should happen in parallel (either with a pool or with rayon)
             let data = sim.simulate(&self, eidx)?;
             topology.graph[eidx]
                 .dists
