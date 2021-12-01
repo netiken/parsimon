@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    client::{ClientId, ClientMap, VClient, VFlow, VNodeId},
+    client::Client,
     linksim::LinkSim,
     network::{types::NodeId, Flow, Network, UniqFlowId},
 };
@@ -9,8 +9,7 @@ use crate::{
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec<S> {
     network: Network,
-    clients: Vec<VClient>,
-    mappings: ClientMap,
+    clients: Vec<Client>,
     linksim: S,
 }
 
@@ -20,48 +19,22 @@ impl<S: LinkSim> Spec<S> {
     /// Correctness properties:
     ///
     /// - Every flow must have a valid source and destination.
-    /// - Every client must have an entry in `ClientMap`.
-    /// - Every mapping must be from a valid virtual node to a valid physical node.
     pub(crate) fn validate(self) -> Result<ValidSpec<S>, SpecError> {
         let nodes = self.network.nodes().map(|n| n.id).collect::<HashSet<_>>();
-        for client @ VClient { id, .. } in &self.clients {
-            let vnodes = client.nodes().iter().copied().collect::<HashSet<_>>();
+        for client in &self.clients {
             // CORRECTNESS: Every flow must have a valid source and destination.
-            for &VFlow { id, src, dst, .. } in client.flows() {
-                if !vnodes.contains(&src) {
+            for &Flow { id, src, dst, .. } in client.flows() {
+                if !nodes.contains(&src) {
                     return Err(SpecError::InvalidFlowSrc { flow: id, src });
                 }
-                if !vnodes.contains(&dst) {
+                if !nodes.contains(&dst) {
                     return Err(SpecError::InvalidFlowDst { flow: id, dst });
                 }
-            }
-            match self.mappings.get(&id) {
-                Some(map) => {
-                    // CORRECTNESS: Every mapping must be from a valid virtual node to a valid
-                    // physical node.
-                    for (&vnode, &node) in map.iter() {
-                        if !vnodes.contains(&vnode) {
-                            return Err(SpecError::InvalidMappingFrom {
-                                client: *id,
-                                from: vnode,
-                            });
-                        }
-                        if !nodes.contains(&node) {
-                            return Err(SpecError::InvalidMappingTo {
-                                client: *id,
-                                to: node,
-                            });
-                        }
-                    }
-                }
-                // CORRECTNESS: Every client must have an entry in `ClientMap`.
-                None => return Err(SpecError::MissingClientMapping(*id)),
             }
         }
         Ok(ValidSpec {
             network: self.network,
             clients: self.clients,
-            mappings: self.mappings,
             linksim: self.linksim,
         })
     }
@@ -72,8 +45,7 @@ impl<S: LinkSim> Spec<S> {
 #[derive(Debug)]
 pub(crate) struct ValidSpec<S> {
     pub(crate) network: Network,
-    pub(crate) clients: Vec<VClient>,
-    pub(crate) mappings: ClientMap,
+    pub(crate) clients: Vec<Client>,
     pub(crate) linksim: S,
 }
 
@@ -83,20 +55,7 @@ impl<S: LinkSim> ValidSpec<S> {
     pub(crate) fn collect_flows(&self) -> Vec<Flow> {
         self.clients
             .iter()
-            .flat_map(|c| {
-                c.flows().iter().map(|vf| {
-                    // The `unwrap`s are justified by the correctness condition in
-                    // `Spec::validate`.
-                    let map = self.mappings.get(&c.id).unwrap();
-                    Flow {
-                        id: vf.id,
-                        src: *map.get(&vf.src).unwrap(),
-                        dst: *map.get(&vf.dst).unwrap(),
-                        size: vf.size,
-                        start: vf.start,
-                    }
-                })
-            })
+            .flat_map(|c| c.flows().iter().cloned())
             .collect()
     }
 }
@@ -104,25 +63,17 @@ impl<S: LinkSim> ValidSpec<S> {
 #[derive(Debug, thiserror::Error)]
 pub enum SpecError {
     #[error("flow {flow} has an invalid source ({src})")]
-    InvalidFlowSrc { flow: UniqFlowId, src: VNodeId },
+    InvalidFlowSrc { flow: UniqFlowId, src: NodeId },
 
     #[error("flow {flow} has an invalid source ({dst})")]
-    InvalidFlowDst { flow: UniqFlowId, dst: VNodeId },
-
-    #[error("client {0} does not have a mapping")]
-    MissingClientMapping(ClientId),
-
-    #[error("client {client} has no VNode {from}")]
-    InvalidMappingFrom { client: ClientId, from: VNodeId },
-
-    #[error("client {client} has no VNode {to}")]
-    InvalidMappingTo { client: ClientId, to: NodeId },
+    InvalidFlowDst { flow: UniqFlowId, dst: NodeId },
 }
 
 #[cfg(test)]
 mod tests {
     use petgraph::graph::EdgeIndex;
 
+    use crate::client::ClientId;
     use crate::linksim::LinkSimResult;
     use crate::network::{FlowId, SimNetwork};
     use crate::testing;
@@ -139,10 +90,10 @@ mod tests {
     #[test]
     fn invalid_flow_src_fails() {
         let mut spec = spec();
-        let flow = VFlow {
+        let flow = Flow {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
-            src: VNodeId::new(100),
-            dst: VNodeId::new(2),
+            src: NodeId::new(100),
+            dst: NodeId::new(2),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
@@ -156,10 +107,10 @@ mod tests {
     #[test]
     fn invalid_flow_dst_fails() {
         let mut spec = spec();
-        let flow = VFlow {
+        let flow = Flow {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(1)),
-            src: VNodeId::new(0),
-            dst: VNodeId::new(100),
+            src: NodeId::new(0),
+            dst: NodeId::new(100),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
@@ -167,38 +118,6 @@ mod tests {
         assert!(matches!(
             spec.validate(),
             Err(SpecError::InvalidFlowDst { .. })
-        ));
-    }
-
-    #[test]
-    fn missing_client_mapping_fails() {
-        let mut spec = spec();
-        spec.mappings.remove(&ClientId::new(0));
-        assert!(matches!(
-            spec.validate(),
-            Err(SpecError::MissingClientMapping(..))
-        ));
-    }
-
-    #[test]
-    fn invalid_mapping_from_fails() {
-        let mut spec = spec();
-        let map = spec.mappings.get_mut(&ClientId::new(0)).unwrap();
-        map.insert(VNodeId::new(100), NodeId::new(0));
-        assert!(matches!(
-            spec.validate(),
-            Err(SpecError::InvalidMappingFrom { .. })
-        ));
-    }
-
-    #[test]
-    fn invalid_mapping_to_fails() {
-        let mut spec = spec();
-        let map = spec.mappings.get_mut(&ClientId::new(0)).unwrap();
-        map.insert(VNodeId::new(0), NodeId::new(100));
-        assert!(matches!(
-            spec.validate(),
-            Err(SpecError::InvalidMappingTo { .. })
         ));
     }
 
@@ -213,11 +132,9 @@ mod tests {
     fn spec() -> Spec<TestLinkSim> {
         let network = network();
         let client = client();
-        let mappings = mappings();
         Spec {
             network,
             clients: vec![client],
-            mappings,
             linksim: TestLinkSim,
         }
     }
@@ -227,34 +144,14 @@ mod tests {
         Network::new(&nodes, &links).unwrap()
     }
 
-    fn client() -> VClient {
-        let flow = VFlow {
+    fn client() -> Client {
+        let flow = Flow {
             id: UniqFlowId::new(ClientId::new(0), FlowId::new(0)),
-            src: VNodeId::new(0),
-            dst: VNodeId::new(2),
+            src: NodeId::new(0),
+            dst: NodeId::new(2),
             size: Bytes::ZERO,
             start: Nanosecs::ZERO,
         };
-        VClient::new(
-            ClientId::ZERO,
-            "test-client".into(),
-            vec![VNodeId::new(0), VNodeId::new(1), VNodeId::new(2)],
-            vec![flow],
-        )
-    }
-
-    fn mappings() -> ClientMap {
-        [(
-            ClientId::new(0),
-            [
-                (VNodeId::new(0), NodeId::new(0)),
-                (VNodeId::new(1), NodeId::new(1)),
-                (VNodeId::new(2), NodeId::new(2)),
-            ]
-            .into_iter()
-            .collect(),
-        )]
-        .into_iter()
-        .collect()
+        Client::new(ClientId::ZERO, "test-client".into(), vec![flow])
     }
 }
