@@ -148,6 +148,7 @@ pub enum SimNetworkError {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
     routes: Routes,

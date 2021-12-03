@@ -1,7 +1,7 @@
 use crate::edist::EDistBuckets;
 use crate::units::{Bytes, Gbps, Nanosecs};
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     pub id: NodeId,
     pub kind: NodeKind,
@@ -23,7 +23,7 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum NodeKind {
     Host,
     Switch,
@@ -32,7 +32,7 @@ pub enum NodeKind {
 identifier!(NodeId, usize);
 
 /// A bidirectional channel.
-#[derive(Debug, Clone, Copy, derive_new::new)]
+#[derive(Debug, Clone, Copy, derive_new::new, serde::Serialize, serde::Deserialize)]
 pub struct Link {
     pub a: NodeId,
     pub b: NodeId,
@@ -101,6 +101,7 @@ impl TracedChannel {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub struct EDistChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
@@ -123,7 +124,7 @@ impl EDistChannel {
 
 identifier!(FlowId, usize);
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
     pub id: FlowId,
     pub src: NodeId,
