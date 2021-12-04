@@ -6,3 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+linksim-impls = { path = "../linksim-impls" }
+parsimon-core = { path = "../parsimon-core" }
+serde = { version = "1.0.130", features = ["derive"] }
+serde_dhall = "0.10.1"
+serde_json = "1.0.72"
+thiserror = "1.0.30"

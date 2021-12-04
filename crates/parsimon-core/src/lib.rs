@@ -17,3 +17,6 @@ pub mod units;
 pub(crate) mod utils;
 
 pub mod testing;
+
+pub use run::{run, Error};
+pub use spec::Spec;

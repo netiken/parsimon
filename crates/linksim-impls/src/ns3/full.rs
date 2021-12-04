@@ -21,10 +21,10 @@ pub struct Ns3Full {
 }
 
 impl Ns3Full {
-    pub fn new(root: impl AsRef<Path>, bin: impl AsRef<Path>) -> Self {
+    pub fn new(root_dir: impl AsRef<Path>, ns3_dir: impl AsRef<Path>) -> Self {
         Self {
-            root_dir: PathBuf::from(root.as_ref()),
-            ns3_dir: PathBuf::from(bin.as_ref()),
+            root_dir: PathBuf::from(root_dir.as_ref()),
+            ns3_dir: PathBuf::from(ns3_dir.as_ref()),
         }
     }
 }
