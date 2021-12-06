@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use linksim_impls::ns3::full::Ns3Full;
@@ -8,24 +9,34 @@ use parsimon_core::network::{
     Flow,
 };
 
-pub fn run_from_file(spec: impl AsRef<Path>) -> Result<DelayNetwork, Error> {
-    let path = spec.as_ref();
-    let contents = std::fs::read_to_string(path)?;
-    let spec: Spec = match path.extension().and_then(|ext| ext.to_str()) {
+pub fn run_from_files(
+    network: impl AsRef<Path>,
+    flows: impl AsRef<Path>,
+) -> Result<DelayNetwork, Error> {
+    let contents = std::fs::read_to_string(network.as_ref())?;
+    let network: Network = match network.as_ref().extension().and_then(|ext| ext.to_str()) {
         Some("json") => serde_json::from_str(&contents)?,
         Some("dhall") => serde_dhall::from_str(&contents).parse()?,
-        _ => return Err(Error::UnknownFileType(path.into())),
+        _ => return Err(Error::UnknownFileType(network.as_ref().into())),
     };
+    let contents = std::fs::read_to_string(flows.as_ref())?;
+    let flows: Vec<Flow> = match flows.as_ref().extension().and_then(|ext| ext.to_str()) {
+        Some("json") => serde_json::from_str(&contents)?,
+        _ => return Err(Error::UnknownFileType(flows.as_ref().into())),
+    };
+    let spec = Spec { network, flows };
     run(spec)
 }
 
 pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
-    let network = match spec.linksim {
+    let network = match spec.network.linksim {
         LinkSimKind::Ns3Full { root_dir, ns3_dir } => {
+            let root_dir = fs::canonicalize(root_dir)?;
+            let ns3_dir = fs::canonicalize(ns3_dir)?;
             let linksim = Ns3Full::new(root_dir, ns3_dir);
             let spec = parsimon_core::Spec::builder()
-                .nodes(spec.nodes)
-                .links(spec.links)
+                .nodes(spec.network.nodes)
+                .links(spec.network.links)
                 .flows(spec.flows)
                 .linksim(linksim)
                 .build();
@@ -55,9 +66,14 @@ pub enum Error {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Spec {
+    pub network: Network,
+    pub flows: Vec<Flow>,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Network {
     pub nodes: Vec<Node>,
     pub links: Vec<Link>,
-    pub flows: Vec<Flow>,
     pub linksim: LinkSimKind,
 }
 
