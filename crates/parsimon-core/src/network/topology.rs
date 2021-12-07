@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use petgraph::graph::{DiGraph, NodeIndex};
+use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
 use crate::network::types::{Channel, Link, Node, NodeId, NodeKind, TracedChannel};
 
@@ -18,6 +18,10 @@ impl<C> Topology<C> {
         to self.id2idx {
             #[call(get)]
             pub(crate) fn idx_of(&self, id: &NodeId) -> Option<&NodeIndex>;
+        }
+
+        to self.graph {
+            pub(crate) fn find_edge(&self, a: NodeIndex, b: NodeIndex) -> Option<EdgeIndex>;
         }
     }
 }

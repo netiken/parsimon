@@ -4,6 +4,7 @@ pub mod types;
 
 use std::collections::HashMap;
 
+use rand::prelude::*;
 use rayon::prelude::*;
 
 pub use petgraph::graph::EdgeIndex;
@@ -13,6 +14,7 @@ pub use types::*;
 use crate::{
     edist::EDistError,
     linksim::{LinkSim, LinkSimError},
+    units::{Bytes, Nanosecs},
     utils,
 };
 
@@ -44,7 +46,7 @@ impl Network {
         let mut topology = Topology::new_traced(&self.topology);
         for &Flow { id, src, dst, .. } in &flows {
             let hash = utils::calculate_hash(&id);
-            let path = self.edges_indices_between(src, dst, |choices| {
+            let path = self.edge_indices_between(src, dst, |choices| {
                 let idx = hash as usize % choices.len();
                 Some(&choices[idx])
             });
@@ -59,32 +61,6 @@ impl Network {
         }
     }
 
-    pub(crate) fn edges_indices_between(
-        &self,
-        src: NodeId,
-        dst: NodeId,
-        choose: impl Fn(&[NodeId]) -> Option<&NodeId>,
-    ) -> impl Iterator<Item = EdgeIndex> {
-        let mut acc = Vec::new();
-        let mut cur = src;
-        while cur != dst {
-            let next_hop_choices = self.routes.next_hops_unchecked(cur, dst);
-            match choose(next_hop_choices) {
-                Some(&next_hop) => {
-                    // These indices are all guaranteed to exist because we have a valid topology
-                    let i = *self.topology.idx_of(&cur).unwrap();
-                    let j = *self.topology.idx_of(&next_hop).unwrap();
-                    let e = self.topology.graph.find_edge(i, j).unwrap();
-                    acc.push(e);
-                    cur = next_hop;
-                }
-                // There is no choice of next hop, and therefore no path
-                None => return Vec::new().into_iter(),
-            }
-        }
-        acc.into_iter()
-    }
-
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]
@@ -95,6 +71,16 @@ impl Network {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
+    }
+}
+
+impl TraversableNetwork<Channel> for Network {
+    fn topology(&self) -> &Topology<Channel> {
+        &self.topology
+    }
+
+    fn routes(&self) -> &Routes {
+        &self.routes
     }
 }
 
@@ -152,6 +138,16 @@ impl SimNetwork {
     }
 }
 
+impl TraversableNetwork<TracedChannel> for SimNetwork {
+    fn topology(&self) -> &Topology<TracedChannel> {
+        &self.topology
+    }
+
+    fn routes(&self) -> &Routes {
+        &self.routes
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum SimNetworkError {
     #[error("Failed to simulate link")]
@@ -167,8 +163,32 @@ pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
     routes: Routes,
 }
-
 impl DelayNetwork {
+    pub fn predict<R: Rng>(
+        &self,
+        size: Bytes,
+        src: NodeId,
+        dst: NodeId,
+        mut rng: R,
+    ) -> Option<Nanosecs> {
+        let edges = self
+            .edge_indices_between(src, dst, |choices| choices.first())
+            .collect::<Vec<_>>();
+        if edges.is_empty() {
+            return None;
+        }
+        edges
+            .iter()
+            .map(|&e| {
+                let chan = &self.topology.graph[e];
+                chan.dists.for_size(size).map(|dist| {
+                    let sample = dist.sample(&mut rng);
+                    Nanosecs::new(sample as u64)
+                })
+            })
+            .sum()
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]
@@ -179,6 +199,48 @@ impl DelayNetwork {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
+    }
+}
+
+impl TraversableNetwork<EDistChannel> for DelayNetwork {
+    fn topology(&self) -> &Topology<EDistChannel> {
+        &self.topology
+    }
+
+    fn routes(&self) -> &Routes {
+        &self.routes
+    }
+}
+
+trait TraversableNetwork<C> {
+    fn topology(&self) -> &Topology<C>;
+
+    fn routes(&self) -> &Routes;
+
+    fn edge_indices_between(
+        &self,
+        src: NodeId,
+        dst: NodeId,
+        choose: impl Fn(&[NodeId]) -> Option<&NodeId>,
+    ) -> std::vec::IntoIter<EdgeIndex> {
+        let mut acc = Vec::new();
+        let mut cur = src;
+        while cur != dst {
+            let next_hop_choices = self.routes().next_hops_unchecked(cur, dst);
+            match choose(next_hop_choices) {
+                Some(&next_hop) => {
+                    // These indices are all guaranteed to exist because we have a valid topology
+                    let i = *self.topology().idx_of(&cur).unwrap();
+                    let j = *self.topology().idx_of(&next_hop).unwrap();
+                    let e = self.topology().find_edge(i, j).unwrap();
+                    acc.push(e);
+                    cur = next_hop;
+                }
+                // There is no choice of next hop, and therefore no path
+                None => return Vec::new().into_iter(),
+            }
+        }
+        acc.into_iter()
     }
 }
 

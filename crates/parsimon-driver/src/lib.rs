@@ -2,12 +2,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use linksim_impls::ns3::full::Ns3Full;
-pub use parsimon_core::network::DelayNetwork;
+pub use parsimon_core::network::{DelayNetwork, Flow, NodeId};
+pub use parsimon_core::units::*;
 
-use parsimon_core::network::{
-    types::{Link, Node},
-    Flow,
-};
+use parsimon_core::network::types::{Link, Node};
 
 pub fn run_from_files(
     network: impl AsRef<Path>,

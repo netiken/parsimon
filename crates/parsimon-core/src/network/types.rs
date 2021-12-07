@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::edist::EDistBuckets;
 use crate::units::{Bytes, Gbps, Nanosecs};
 
@@ -145,7 +147,11 @@ pub struct FctRecord {
 
 impl FctRecord {
     pub fn delay(&self) -> Nanosecs {
-        self.fct - self.ideal
+        // Work around kind-of-wrong ns-3 computation
+        match self.fct.cmp(&self.ideal) {
+            Ordering::Less | Ordering::Equal => Nanosecs::ZERO,
+            Ordering::Greater => self.fct - self.ideal,
+        }
     }
 
     pub fn pktnorm_delay(&self) -> f64 {
