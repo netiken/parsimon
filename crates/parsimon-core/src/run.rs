@@ -6,7 +6,7 @@ use crate::spec::{Spec, SpecError};
 /// distributions.
 ///
 /// This function returns an error if the provided mappings in the specification are invalid.
-pub fn run<S: LinkSim>(spec: Spec<S>) -> Result<DelayNetwork, Error> {
+pub fn run<S: LinkSim + Sync>(spec: Spec<S>) -> Result<DelayNetwork, Error> {
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
     let sims = spec.network.into_simulations(flows);

@@ -2,6 +2,10 @@ mod routing;
 pub(crate) mod topology;
 pub mod types;
 
+use std::collections::HashMap;
+
+use rayon::prelude::*;
+
 pub use petgraph::graph::EdgeIndex;
 pub use topology::TopologyError;
 pub use types::*;
@@ -102,14 +106,24 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
-    pub fn into_delays<S: LinkSim>(self, sim: S) -> Result<DelayNetwork, SimNetworkError> {
+    pub fn into_delays<S: LinkSim + Sync>(self, sim: S) -> Result<DelayNetwork, SimNetworkError> {
         let mut topology = Topology::new_edist(&self.topology);
+        let (s, r) = crossbeam_channel::unbounded();
+        self.topology
+            .graph
+            .edge_indices()
+            .par_bridge()
+            .try_for_each_with(s, |s, e| {
+                let data = sim.simulate(&self, e)?;
+                s.send((e, data)).unwrap(); // the channel should never become disconnected
+                Result::<(), SimNetworkError>::Ok(())
+            })?;
+        let eidx2data = r.iter().collect::<HashMap<_, _>>();
         for eidx in self.topology.graph.edge_indices() {
-            // TODO: This should happen in parallel (either with a pool or with rayon)
-            let data = sim.simulate(&self, eidx)?;
+            let data = eidx2data.get(&eidx).unwrap();
             topology.graph[eidx]
                 .dists
-                .fill(&data, |rec| rec.size, |rec| rec.pktnorm_delay())?;
+                .fill(data, |rec| rec.size, |rec| rec.pktnorm_delay())?;
         }
         Ok(DelayNetwork {
             topology,
