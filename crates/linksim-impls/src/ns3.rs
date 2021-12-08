@@ -66,7 +66,8 @@ trait Ns3Sim {
             .chain(chan.flows().map(|id| {
                 let f = *flow_map.get(&id).unwrap();
                 format!(
-                    "{} {} 3 100 {} {}",
+                    "{} {} {} 3 100 {} {}",
+                    f.id,
                     f.src,
                     f.dst,
                     f.size.into_u64(),
@@ -88,11 +89,13 @@ trait Ns3Sim {
         dir
     }
 
+    // FIXME: remove this fixed window hack
     fn run_ns3(&self, dir: impl AsRef<Path>) -> cmd_lib::CmdResult {
         let dir = dir.as_ref();
         let ns3_dir = self.ns3_dir();
         let extra_args = &[
-            "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
+            "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp", "--fwin",
+            "104000",
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};
@@ -108,7 +111,7 @@ trait FromNs3: Sized {
 impl FromNs3 for FctRecord {
     fn from_ns3(s: &str) -> Result<Self, ParseNs3Error> {
         // sip, dip, sport, dport, size (B), start_time, fct (ns), standalone_fct (ns)
-        const NR_NS3_FIELDS: usize = 8;
+        const NR_NS3_FIELDS: usize = 9;
         let fields = s.split_whitespace().collect::<Vec<_>>();
         let nr_fields = fields.len();
         if nr_fields != NR_NS3_FIELDS {
@@ -118,10 +121,11 @@ impl FromNs3 for FctRecord {
             });
         }
         Ok(FctRecord {
-            size: fields[4].parse()?,
-            start: fields[5].parse()?,
-            fct: fields[6].parse()?,
-            ideal: fields[7].parse()?,
+            id: fields[0].parse()?,
+            size: fields[5].parse()?,
+            start: fields[6].parse()?,
+            fct: fields[7].parse()?,
+            ideal: fields[8].parse()?,
         })
     }
 }

@@ -138,6 +138,7 @@ pub struct Flow {
 #[derive(Debug, Clone, Copy)]
 pub struct FctRecord {
     // From flow
+    pub id: FlowId,
     pub size: Bytes,
     pub start: Nanosecs,
     // From simulation
