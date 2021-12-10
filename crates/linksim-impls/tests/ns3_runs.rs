@@ -14,7 +14,7 @@ fn ns3_runs() -> anyhow::Result<()> {
         "{}/../../backends/High-Precision-Congestion-Control/simulation",
         MANIFEST_DIR
     );
-    let sim = Ns3Full::new(root_dir.path(), ns3_dir);
+    let sim = Ns3Full::new(root_dir.path(), ns3_dir, Bytes::new(100_000));
     let network = test_sim_network()?;
     assert_eq!(sim.simulate(&network, EdgeIndex::new(0))?.len(), 2);
     Ok(())

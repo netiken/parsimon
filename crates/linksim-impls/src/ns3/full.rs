@@ -10,6 +10,7 @@ use parsimon_core::{
         types::{Link, TracedChannel},
         EdgeIndex, NodeKind, SimNetwork,
     },
+    units::Bytes,
 };
 
 use super::Ns3Sim;
@@ -18,13 +19,15 @@ use super::Ns3Sim;
 pub struct Ns3Full {
     root_dir: PathBuf,
     ns3_dir: PathBuf,
+    window: Bytes,
 }
 
 impl Ns3Full {
-    pub fn new(root_dir: impl AsRef<Path>, ns3_dir: impl AsRef<Path>) -> Self {
+    pub fn new(root_dir: impl AsRef<Path>, ns3_dir: impl AsRef<Path>, window: Bytes) -> Self {
         Self {
             root_dir: PathBuf::from(root_dir.as_ref()),
             ns3_dir: PathBuf::from(ns3_dir.as_ref()),
+            window,
         }
     }
 }
@@ -36,6 +39,10 @@ impl Ns3Sim for Ns3Full {
 
     fn ns3_dir(&self) -> &Path {
         self.ns3_dir.as_path()
+    }
+
+    fn window(&self) -> Bytes {
+        self.window
     }
 
     fn to_ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String {

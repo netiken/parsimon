@@ -28,11 +28,15 @@ pub fn run_from_files(
 
 pub fn run(spec: Spec) -> Result<DelayNetwork, Error> {
     let network = match spec.network.linksim {
-        LinkSimKind::Ns3Full { root_dir, ns3_dir } => {
+        LinkSimKind::Ns3Full {
+            root_dir,
+            ns3_dir,
+            window,
+        } => {
             fs::create_dir_all(&root_dir)?;
             let root_dir = fs::canonicalize(root_dir)?;
             let ns3_dir = fs::canonicalize(ns3_dir)?;
-            let linksim = Ns3Full::new(root_dir, ns3_dir);
+            let linksim = Ns3Full::new(root_dir, ns3_dir, window);
             let spec = parsimon_core::Spec::builder()
                 .nodes(spec.network.nodes)
                 .links(spec.network.links)
@@ -78,5 +82,9 @@ pub struct Network {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum LinkSimKind {
-    Ns3Full { root_dir: PathBuf, ns3_dir: PathBuf },
+    Ns3Full {
+        root_dir: PathBuf,
+        ns3_dir: PathBuf,
+        window: Bytes,
+    },
 }

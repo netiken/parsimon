@@ -7,6 +7,7 @@ use std::{
 use parsimon_core::{
     linksim::LinkSimError,
     network::{types::TracedChannel, FctRecord, NodeId, SimNetwork},
+    units::Bytes,
 };
 
 // We can implement `LinkSim` for any type that implements the `Ns3Sim` trait, defined below
@@ -50,6 +51,8 @@ trait Ns3Sim {
     fn root_dir(&self) -> &Path;
 
     fn ns3_dir(&self) -> &Path;
+
+    fn window(&self) -> Bytes;
 
     fn to_ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String;
 
