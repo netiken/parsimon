@@ -92,17 +92,16 @@ trait Ns3Sim {
         dir
     }
 
-    // FIXME: remove this fixed window hack
     fn run_ns3(&self, dir: impl AsRef<Path>) -> cmd_lib::CmdResult {
         let dir = dir.as_ref();
         let ns3_dir = self.ns3_dir();
+        let window = self.window().into_u64().to_string();
         let extra_args = &[
-            "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp", "--fwin",
-            "104000",
+            "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};
-            python2 run.py --root ${dir} $[extra_args] > ${dir}/output.txt 2>&1
+            python2 run.py --root ${dir} --fwin ${window} $[extra_args] > ${dir}/output.txt 2>&1
         }
     }
 }
