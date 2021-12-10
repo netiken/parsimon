@@ -147,8 +147,8 @@ mod tests {
         let s = Ns3Full::to_ns3_flows(&network, chan)?;
         insta::assert_snapshot!(s, @r###"
         2
-        0 1 3 100 1234 1
-        0 2 3 100 5678 2
+        0 0 1 3 100 1234 1
+        1 0 2 3 100 5678 2
         "###);
         Ok(())
     }

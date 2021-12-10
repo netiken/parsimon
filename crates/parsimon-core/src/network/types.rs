@@ -3,6 +3,8 @@ use std::cmp::Ordering;
 use crate::edist::EDistBuckets;
 use crate::units::{Bytes, Gbps, Nanosecs};
 
+pub const PKTSIZE_MAX: Bytes = Bytes::new(1000);
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     pub id: NodeId,
@@ -156,8 +158,7 @@ impl FctRecord {
     }
 
     pub fn pktnorm_delay(&self) -> f64 {
-        const PKTSIZE_MAX: f64 = 1000.0;
-        let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX).ceil();
+        let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
     }
 }

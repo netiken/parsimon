@@ -183,7 +183,7 @@ impl DelayNetwork {
                 let chan = &self.topology.graph[e];
                 chan.dists.for_size(size).map(|dist| {
                     let pktnorm_delay = dist.sample(&mut rng);
-                    let nr_pkts = (size.into_f64() / 1000.0).ceil(); // TODO: consolidate PKTSIZE_MAX
+                    let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
                     let delay = nr_pkts * pktnorm_delay;
                     Nanosecs::new(delay as u64)
                 })
