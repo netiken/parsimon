@@ -1,19 +1,11 @@
-use std::{
-    fmt::Write,
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
+use ns3_frontend::Ns3Simulation;
 use parsimon_core::{
     linksim::{LinkSim, LinkSimError, LinkSimResult},
-    network::{
-        types::{Link, TracedChannel},
-        EdgeIndex, NodeKind, SimNetwork,
-    },
+    network::{types::Link, EdgeIndex, SimNetwork},
     units::Bytes,
 };
-
-use super::Ns3Sim;
 
 #[derive(Debug)]
 pub struct Ns3Full {
@@ -32,25 +24,10 @@ impl Ns3Full {
     }
 }
 
-impl Ns3Sim for Ns3Full {
-    fn root_dir(&self) -> &Path {
-        self.root_dir.as_path()
-    }
-
-    fn ns3_dir(&self) -> &Path {
-        self.ns3_dir.as_path()
-    }
-
-    fn window(&self) -> Bytes {
-        self.window
-    }
-
-    fn to_ns3_topology(network: &SimNetwork, chan: &TracedChannel) -> String {
-        let nodes = network.nodes().collect::<Vec<_>>();
-        let switches = nodes
-            .iter()
-            .filter(|&&n| matches!(n.kind, NodeKind::Switch))
-            .collect::<Vec<_>>();
+impl LinkSim for Ns3Full {
+    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
+        let nodes = network.nodes().cloned().collect::<Vec<_>>();
+        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
         let links = network
             .links()
             .map(|l| {
@@ -65,98 +42,18 @@ impl Ns3Sim for Ns3Full {
                 }
             })
             .collect::<Vec<_>>();
-        let mut s = String::new();
-        // First line: total node #, switch node #, link #
-        writeln!(s, "{} {} {}", nodes.len(), switches.len(), links.len()).unwrap();
-        // Second line: switch node IDs...
-        let switch_ids = switches
-            .iter()
-            .map(|&&s| s.id.to_string())
-            .collect::<Vec<_>>()
-            .join(" ");
-        writeln!(s, "{}", switch_ids).unwrap();
-        // src0 dst0 rate delay error_rate
-        // src1 dst1 rate delay error_rate
-        // ...
-        for link in links {
-            writeln!(
-                s,
-                "{} {} {} {} 0",
-                link.a, link.b, link.bandwidth, link.delay
-            )
-            .unwrap();
-        }
-        s
-    }
-}
-
-linksim_impl!(Ns3Full);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use parsimon_core::{
-        network::{Flow, FlowId, Network, NodeId},
-        testing,
-        units::{Bytes, Nanosecs},
-    };
-
-    fn test_sim_network() -> anyhow::Result<SimNetwork> {
-        let (nodes, links) = testing::eight_node_config();
-        let network = Network::new(&nodes, &links)?;
-        let flows = vec![
-            Flow {
-                id: FlowId::new(0),
-                src: NodeId::new(0),
-                dst: NodeId::new(1),
-                size: Bytes::new(1234),
-                start: Nanosecs::new(1_000_000_000),
-            },
-            Flow {
-                id: FlowId::new(1),
-                src: NodeId::new(0),
-                dst: NodeId::new(2),
-                size: Bytes::new(5678),
-                start: Nanosecs::new(2_000_000_000),
-            },
-        ];
-        let network = network.into_simulations(flows);
-        Ok(network)
-    }
-
-    #[test]
-    fn ns3_topology_correct() -> anyhow::Result<()> {
-        let network = test_sim_network()?;
-        let edge = EdgeIndex::new(0);
-        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let s = Ns3Full::to_ns3_topology(&network, chan);
-        insta::assert_snapshot!(s, @r###"
-        8 4 8
-        4 5 6 7
-        0 4 100Gbps 1000ns 0
-        1 4 1000Gbps 1000ns 0
-        2 5 1000Gbps 1000ns 0
-        3 5 1000Gbps 1000ns 0
-        4 6 1000Gbps 1000ns 0
-        4 7 1000Gbps 1000ns 0
-        5 6 1000Gbps 1000ns 0
-        5 7 1000Gbps 1000ns 0
-        "###);
-        Ok(())
-    }
-
-    #[test]
-    fn ns3_flows_correct() -> anyhow::Result<()> {
-        let network = test_sim_network()?;
-        let edge = EdgeIndex::new(0);
-        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let s = Ns3Full::to_ns3_flows(&network, chan)?;
-        insta::assert_snapshot!(s, @r###"
-        2
-        0 0 1 3 100 1234 1
-        1 0 2 3 100 5678 2
-        "###);
-        Ok(())
+        let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
+        let mut data_dir = PathBuf::from(&self.root_dir);
+        data_dir.push(format!("{}-{}", chan.src(), chan.dst()));
+        let sim = Ns3Simulation::builder()
+            .ns3_dir(&self.ns3_dir)
+            .data_dir(data_dir)
+            .nodes(nodes)
+            .links(links)
+            .window(self.window)
+            .flows(flows)
+            .build();
+        let records = sim.run().map_err(|e| anyhow::anyhow!(e))?;
+        Ok(records)
     }
 }

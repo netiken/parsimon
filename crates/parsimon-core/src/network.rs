@@ -117,6 +117,15 @@ impl SimNetwork {
         })
     }
 
+    pub fn flows_on(&self, edge: EdgeIndex) -> Option<Vec<Flow>> {
+        self.edge(edge).map(|chan| {
+            let flow_map = self.flows().map(|f| (f.id, f)).collect::<HashMap<_, _>>();
+            chan.flows()
+                .map(|id| flow_map.get(&id).unwrap().to_owned().to_owned())
+                .collect()
+        })
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]

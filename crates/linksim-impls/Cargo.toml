@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.51"
 cmd_lib = "1.3.0"
+ns3-frontend = { path = "../ns3-frontend" }
 parsimon-core = { path = "../parsimon-core" }
 thiserror = "1.0.30"
 
