@@ -56,8 +56,9 @@ impl Ns3Simulation {
     }
 
     fn invoke_ns3(&self) -> cmd_lib::CmdResult {
-        let data_dir = &self.data_dir;
-        let ns3_dir = &self.ns3_dir;
+        // We need to canonicalize the directories because we run `cd` below
+        let data_dir = std::fs::canonicalize(&self.data_dir)?;
+        let ns3_dir = std::fs::canonicalize(&self.ns3_dir)?;
         let window = self.window.into_u64().to_string();
         let extra_args = &[
             "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
