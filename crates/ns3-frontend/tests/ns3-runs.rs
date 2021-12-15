@@ -5,6 +5,7 @@ use parsimon_core::{
 };
 
 #[test]
+#[ignore]
 fn ns3_runs() -> anyhow::Result<()> {
     const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
     let data_dir = tempfile::tempdir()?;

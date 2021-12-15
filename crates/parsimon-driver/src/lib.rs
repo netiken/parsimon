@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use linksim_impls::ns3::full::Ns3Full;
+pub use parsimon_core::aggregator::DefaultAggregator;
 pub use parsimon_core::network::{DelayNetwork, Flow, FlowId, NodeId};
 pub use parsimon_core::units::*;
 
