@@ -112,6 +112,7 @@ pub struct EDistChannel {
     pub(crate) bandwidth: Gbps,
     pub(crate) delay: Nanosecs,
     pub(crate) dists: EDistBuckets,
+    pub(crate) offered_loads: Vec<f64>,
 }
 
 impl EDistChannel {
@@ -122,13 +123,14 @@ impl EDistChannel {
             bandwidth: chan.bandwidth,
             delay: chan.delay,
             dists: EDistBuckets::new_empty(),
+            offered_loads: Vec::new(),
         }
     }
 }
 
 identifier!(FlowId, usize);
 
-#[derive(Debug, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
     pub id: FlowId,
     pub src: NodeId,

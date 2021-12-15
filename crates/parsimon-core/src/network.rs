@@ -12,6 +12,7 @@ pub use topology::TopologyError;
 pub use types::*;
 
 use crate::{
+    aggregator::{Aggregator, LinkPrediction},
     edist::EDistError,
     linksim::{LinkSim, LinkSimError},
     units::{Bytes, Nanosecs},
@@ -105,11 +106,26 @@ impl SimNetwork {
                 Result::<(), SimNetworkError>::Ok(())
             })?;
         let eidx2data = r.iter().collect::<HashMap<_, _>>();
+        let fid2flow = self
+            .flows
+            .into_iter()
+            .map(|f| (f.id, f))
+            .collect::<HashMap<_, _>>();
         for eidx in self.topology.graph.edge_indices() {
+            // Fill link with packet-normalized delay predictions
             let data = eidx2data.get(&eidx).unwrap();
             topology.graph[eidx]
                 .dists
                 .fill(data, |rec| rec.size, |rec| rec.pktnorm_delay())?;
+            // Fill link with offered loads
+            let chan = &self.topology.graph[eidx];
+            let flows = chan
+                .flows()
+                .map(|fid| fid2flow.get(&fid).unwrap())
+                .cloned()
+                .collect::<Vec<_>>();
+            let offered_loads = utils::offered_loads(chan.bandwidth, chan.delay, &flows);
+            topology.graph[eidx].offered_loads = offered_loads;
         }
         Ok(DelayNetwork {
             topology,
@@ -172,32 +188,45 @@ pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
     routes: Routes,
 }
+
 impl DelayNetwork {
-    pub fn predict<R: Rng>(
+    // TODO: use the aggregator to aggregate edge predictions
+    pub fn predict<R, A>(
         &self,
         size: Bytes,
-        src: NodeId,
-        dst: NodeId,
+        (src, dst): (NodeId, NodeId),
+        aggregator: A,
         mut rng: R,
-    ) -> Option<Nanosecs> {
+    ) -> Option<Nanosecs>
+    where
+        R: Rng,
+        A: Aggregator,
+    {
         let edges = self
             .edge_indices_between(src, dst, |choices| choices.first())
             .collect::<Vec<_>>();
         if edges.is_empty() {
             return None;
         }
-        edges
-            .iter()
-            .map(|&e| {
-                let chan = &self.topology.graph[e];
-                chan.dists.for_size(size).map(|dist| {
-                    let pktnorm_delay = dist.sample(&mut rng);
-                    let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
-                    let delay = nr_pkts * pktnorm_delay;
-                    Nanosecs::new(delay as u64)
-                })
-            })
-            .sum()
+        let mut predictions = Vec::with_capacity(edges.len());
+        for e in edges {
+            let chan = &self.topology.graph[e];
+            let maybe_prediction = chan.dists.for_size(size).map(|dist| {
+                let pktnorm_delay = dist.sample(&mut rng);
+                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let delay = nr_pkts * pktnorm_delay;
+                LinkPrediction {
+                    delay: Nanosecs::new(delay as u64),
+                    offered_loads: &chan.offered_loads,
+                }
+            });
+            if let Some(prediction) = maybe_prediction {
+                predictions.push(prediction);
+            } else {
+                return None;
+            }
+        }
+        Some(aggregator.aggregate(&predictions))
     }
 
     delegate::delegate! {

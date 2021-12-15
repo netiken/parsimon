@@ -54,6 +54,14 @@ impl std::fmt::Display for Gbps {
     }
 }
 
+unit!(Microsecs);
+
+impl std::fmt::Display for Microsecs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}us", self.0)
+    }
+}
+
 unit!(Nanosecs);
 
 impl std::fmt::Display for Nanosecs {
@@ -62,10 +70,30 @@ impl std::fmt::Display for Nanosecs {
     }
 }
 
+impl From<Microsecs> for Nanosecs {
+    fn from(us: Microsecs) -> Self {
+        Self::new(us.0 * 1_000)
+    }
+}
+
+unit!(Gigabytes);
+
+impl std::fmt::Display for Gigabytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}GB", self.0)
+    }
+}
+
 unit!(Bytes);
 
 impl std::fmt::Display for Bytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}B", self.0)
+    }
+}
+
+impl From<Gigabytes> for Bytes {
+    fn from(gb: Gigabytes) -> Self {
+        Bytes::new(gb.0 * 1_000_000_000)
     }
 }
