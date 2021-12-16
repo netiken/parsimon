@@ -32,3 +32,55 @@ impl Aggregator for DefaultAggregator {
         predictions.iter().map(|p| p.delay).sum()
     }
 }
+
+#[derive(Debug, derive_new::new)]
+pub struct ProportionalAggregator;
+
+impl Aggregator for ProportionalAggregator {
+    fn aggregate(&self, predictions: &[LinkPrediction]) -> Nanosecs {
+        let loads = predictions
+            .iter()
+            .map(|p| p.offered_loads)
+            .collect::<Vec<_>>();
+        let nr_links = predictions.len();
+        let nr_rounds = loads.iter().map(|a| a.len()).min().unwrap_or(0);
+        let totals = loads.iter().map(|a| a.iter().sum()).collect::<Vec<f64>>();
+        let mut adjusted = totals.clone();
+        for round in 0..nr_rounds {
+            let mut max_val = 0.0;
+            for link in 0..nr_links {
+                let val = loads[link][round];
+                if loads[link][round] > max_val {
+                    max_val = val;
+                }
+            }
+            for link in 0..nr_links {
+                if loads[link][round] < max_val {
+                    adjusted[link] -= loads[link][round];
+                }
+            }
+        }
+        itertools::izip!(predictions, adjusted, totals)
+            .map(|(p, adj, tot)| p.delay.scale_by(adj / tot))
+            .sum()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn proportional_aggregator_correct() {
+        let agg = ProportionalAggregator::new();
+        let p1 = LinkPrediction {
+            delay: Nanosecs::new(100),
+            offered_loads: &[0.0, 1.0, 1.0],
+        };
+        let p2 = LinkPrediction {
+            delay: Nanosecs::new(100),
+            offered_loads: &[0.0, 0.5, 1.0],
+        };
+        assert_eq!(agg.aggregate(&[p1, p2]), Nanosecs::new(167));
+    }
+}

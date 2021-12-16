@@ -1019,6 +1019,7 @@ dependencies = [
  "derive-new",
  "derive_more",
  "insta",
+ "itertools 0.10.3",
  "ndarray",
  "ndarray-stats",
  "ordered-float",
