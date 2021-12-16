@@ -48,14 +48,16 @@ impl Aggregator for ProportionalAggregator {
         let mut adjusted = totals.clone();
         for round in 0..nr_rounds {
             let mut max_val = 0.0;
+            let mut max_link = 0;
             for link in 0..nr_links {
                 let val = loads[link][round];
                 if loads[link][round] > max_val {
                     max_val = val;
+                    max_link = link;
                 }
             }
             for link in 0..nr_links {
-                if loads[link][round] < max_val {
+                if link != max_link {
                     adjusted[link] -= loads[link][round];
                 }
             }
@@ -81,6 +83,6 @@ mod tests {
             delay: Nanosecs::new(100),
             offered_loads: &[0.0, 0.5, 1.0],
         };
-        assert_eq!(agg.aggregate(&[p1, p2]), Nanosecs::new(167));
+        assert_eq!(agg.aggregate(&[p1, p2]), Nanosecs::new(100));
     }
 }
