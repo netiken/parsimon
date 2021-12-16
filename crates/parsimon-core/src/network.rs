@@ -93,7 +93,11 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
-    pub fn into_delays<S: LinkSim + Sync>(self, sim: S) -> Result<DelayNetwork, SimNetworkError> {
+    pub fn into_delays<S, T>(self, sim: S, rtt: T) -> Result<DelayNetwork, SimNetworkError>
+    where
+        S: LinkSim + Sync,
+        T: Into<Nanosecs> + Copy,
+    {
         let mut topology = Topology::new_edist(&self.topology);
         let (s, r) = crossbeam_channel::unbounded();
         self.topology
@@ -124,7 +128,7 @@ impl SimNetwork {
                 .map(|fid| fid2flow.get(&fid).unwrap())
                 .cloned()
                 .collect::<Vec<_>>();
-            let offered_loads = utils::offered_loads(chan.bandwidth, chan.delay, &flows);
+            let offered_loads = utils::offered_loads(chan.bandwidth, rtt, &flows);
             topology.graph[eidx].offered_loads = offered_loads;
         }
         Ok(DelayNetwork {
