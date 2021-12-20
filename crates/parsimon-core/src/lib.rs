@@ -6,7 +6,6 @@
 #[macro_use]
 mod ident;
 
-pub mod aggregator;
 pub mod edist;
 pub mod linksim;
 pub mod network;

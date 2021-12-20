@@ -112,7 +112,6 @@ pub struct EDistChannel {
     pub(crate) bandwidth: Gbps,
     pub(crate) delay: Nanosecs,
     pub(crate) dists: EDistBuckets,
-    pub(crate) offered_loads: Vec<f64>,
 }
 
 impl EDistChannel {
@@ -123,7 +122,6 @@ impl EDistChannel {
             bandwidth: chan.bandwidth,
             delay: chan.delay,
             dists: EDistBuckets::new_empty(),
-            offered_loads: Vec::new(),
         }
     }
 }

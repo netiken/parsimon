@@ -10,8 +10,7 @@ pub fn run<S: LinkSim + Sync>(spec: Spec<S>) -> Result<DelayNetwork, Error> {
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
     let sims = spec.network.into_simulations(flows);
-    // TODO: don't hard-code this
-    let delays = sims.into_delays(spec.linksim, crate::units::Microsecs::new(10))?;
+    let delays = sims.into_delays(spec.linksim)?;
     Ok(delays)
 }
 
