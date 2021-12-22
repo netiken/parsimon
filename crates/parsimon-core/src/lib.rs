@@ -9,7 +9,6 @@ mod ident;
 pub mod edist;
 pub mod linksim;
 pub mod network;
-pub mod pruner;
 pub mod run;
 pub mod spec;
 pub mod units;
