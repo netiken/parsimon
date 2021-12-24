@@ -21,7 +21,7 @@ impl<C> Topology<C> {
         }
 
         to self.graph {
-            #[allow(unused)]
+            #[allow(unused)] // used for testing
             #[call(edge_count)]
             pub(crate) fn nr_edges(&self) -> usize;
 
