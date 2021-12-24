@@ -21,6 +21,10 @@ impl<C> Topology<C> {
         }
 
         to self.graph {
+            #[allow(unused)]
+            #[call(edge_count)]
+            pub(crate) fn nr_edges(&self) -> usize;
+
             pub(crate) fn find_edge(&self, a: NodeIndex, b: NodeIndex) -> Option<EdgeIndex>;
         }
     }

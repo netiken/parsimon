@@ -12,6 +12,7 @@ pub use topology::TopologyError;
 pub use types::*;
 
 use crate::{
+    cluster::Cluster,
     edist::EDistError,
     linksim::{LinkSim, LinkSimError},
     units::{Bytes, Nanosecs},
@@ -54,9 +55,17 @@ impl Network {
                 topology.graph[eidx].push_flow(id);
             }
         }
+        // The default clustering uses a 1:1 mapping between edges and clusters.
+        // CORRECTNESS: The code below assumes edge indices start at zero.
+        let clusters = topology
+            .graph
+            .edge_indices()
+            .map(|eidx| Cluster::new(eidx, [eidx].into_iter().collect()))
+            .collect();
         SimNetwork {
             topology,
             routes: self.routes.clone(),
+            clusters,
             flows,
         }
     }
@@ -88,6 +97,10 @@ impl TraversableNetwork<Channel> for Network {
 pub struct SimNetwork {
     topology: Topology<TracedChannel>,
     routes: Routes,
+
+    // Channel clustering
+    clusters: Vec<Cluster>,
+    // Each channel references these flows by index
     flows: Vec<Flow>,
 }
 
@@ -98,22 +111,27 @@ impl SimNetwork {
     {
         let mut topology = Topology::new_edist(&self.topology);
         let (s, r) = crossbeam_channel::unbounded();
-        self.topology
-            .graph
-            .edge_indices()
-            .par_bridge()
-            .try_for_each_with(s, |s, e| {
-                let data = sim.simulate(&self, e)?;
-                s.send((e, data)).unwrap(); // the channel should never become disconnected
-                Result::<(), SimNetworkError>::Ok(())
-            })?;
+        // Simulate all clusters in parallel.
+        self.clusters.par_iter().try_for_each_with(s, |s, c| {
+            let edge = c.representative();
+            let data = sim.simulate(&self, edge)?;
+            s.send((edge, data)).unwrap(); // the channel should never become disconnected
+            Result::<(), SimNetworkError>::Ok(())
+        })?;
+        // Every channel gets filled with delay distributions. All channels in the same cluster get
+        // filled using the cluster representative's data.
         let eidx2data = r.iter().collect::<HashMap<_, _>>();
-        for eidx in self.topology.graph.edge_indices() {
-            // Fill link with packet-normalized delay predictions
-            let data = eidx2data.get(&eidx).unwrap();
-            topology.graph[eidx]
-                .dists
-                .fill(data, |rec| rec.size, |rec| rec.pktnorm_delay())?;
+        for cluster in &self.clusters {
+            let representative = cluster.representative();
+            for &member in cluster.members() {
+                // Fill channel with packet-normalized delay predictions
+                let data = eidx2data.get(&representative).unwrap();
+                topology.graph[member].dists.fill(
+                    data,
+                    |rec| rec.size,
+                    |rec| rec.pktnorm_delay(),
+                )?;
+            }
         }
         Ok(DelayNetwork {
             topology,
@@ -142,6 +160,11 @@ impl SimNetwork {
         to self.topology.links {
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
+        }
+
+        to self.clusters {
+            #[call(len)]
+            pub fn nr_clusters(&self) -> usize;
         }
 
         to self.flows {
@@ -235,6 +258,10 @@ trait TraversableNetwork<C> {
 
     fn routes(&self) -> &Routes;
 
+    fn nr_edges(&self) -> usize {
+        self.topology().nr_edges()
+    }
+
     fn edge_indices_between(
         &self,
         src: NodeId,
@@ -314,6 +341,20 @@ mod tests {
         - 45
         "###);
 
+        Ok(())
+    }
+
+    #[test]
+    fn default_clustering_is_one_to_one() -> anyhow::Result<()> {
+        let (nodes, links) = testing::eight_node_config();
+        let network = Network::new(&nodes, &links).context("failed to create topology")?;
+        let network = network.into_simulations(Vec::new());
+        assert_eq!(network.nr_clusters(), network.nr_edges());
+        assert!(network
+            .clusters
+            .iter()
+            .enumerate()
+            .all(|(i, c)| c.representative().index() == i));
         Ok(())
     }
 }
