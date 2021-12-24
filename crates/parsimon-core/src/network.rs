@@ -41,13 +41,14 @@ impl Network {
     /// Create a `SimNetwork`.
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
-    /// `network`.
+    /// `network`, and there must be a path between them.
     pub fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
         flows.sort_by_key(|f| f.start);
         let mut topology = Topology::new_traced(&self.topology);
         for &Flow { id, src, dst, .. } in &flows {
             let hash = utils::calculate_hash(&id);
             let path = self.edge_indices_between(src, dst, |choices| {
+                assert!(!choices.is_empty(), "missing path between {} and {}", src, dst);
                 let idx = hash as usize % choices.len();
                 Some(&choices[idx])
             });
