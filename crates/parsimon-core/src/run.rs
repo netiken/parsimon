@@ -1,3 +1,4 @@
+use crate::cluster::ClusteringAlgo;
 use crate::linksim::LinkSim;
 use crate::network::{DelayNetwork, SimNetworkError};
 use crate::spec::{Spec, SpecError};
@@ -6,11 +7,16 @@ use crate::spec::{Spec, SpecError};
 /// distributions.
 ///
 /// This function returns an error if the provided mappings in the specification are invalid.
-pub fn run<S: LinkSim + Sync>(spec: Spec<S>) -> Result<DelayNetwork, Error> {
+pub fn run<S, C>(spec: Spec, linksim: S, clusterer: C) -> Result<DelayNetwork, Error>
+where
+    S: LinkSim + Sync,
+    C: ClusteringAlgo,
+{
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
-    let sims = spec.network.into_simulations(flows);
-    let delays = sims.into_delays(spec.linksim)?;
+    let mut sims = spec.network.into_simulations(flows);
+    sims.cluster(clusterer);
+    let delays = sims.into_delays(linksim)?;
     Ok(delays)
 }
 

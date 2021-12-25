@@ -12,7 +12,7 @@ pub use topology::TopologyError;
 pub use types::*;
 
 use crate::{
-    cluster::Cluster,
+    cluster::{Cluster, ClusteringAlgo},
     edist::EDistError,
     linksim::{LinkSim, LinkSimError},
     units::{Bytes, Nanosecs},
@@ -48,7 +48,7 @@ impl Network {
         for &Flow { id, src, dst, .. } in &flows {
             let hash = utils::calculate_hash(&id);
             let path = self.edge_indices_between(src, dst, |choices| {
-                assert!(!choices.is_empty(), "missing path between {} and {}", src, dst);
+                assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
                 let idx = hash as usize % choices.len();
                 Some(&choices[idx])
             });
@@ -106,6 +106,13 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
+    pub fn cluster<C>(&mut self, algorithm: C)
+    where
+        C: ClusteringAlgo,
+    {
+        algorithm.cluster(self)
+    }
+
     pub fn into_delays<S>(self, sim: S) -> Result<DelayNetwork, SimNetworkError>
     where
         S: LinkSim + Sync,

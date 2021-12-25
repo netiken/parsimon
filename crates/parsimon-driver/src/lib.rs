@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use linksim_impls::ns3::full::Ns3Full;
+use parsimon_core::cluster::DefaultClustering;
 pub use parsimon_core::network::{DelayNetwork, Flow, FlowId, NodeId};
 pub use parsimon_core::units::*;
 
@@ -17,6 +18,11 @@ pub fn run_from_files(
 }
 
 pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error> {
+    let spec = parsimon_core::Spec::builder()
+        .nodes(network.nodes)
+        .links(network.links)
+        .flows(flows)
+        .build();
     let network = match network.linksim {
         LinkSimKind::Ns3Full {
             root_dir,
@@ -25,13 +31,7 @@ pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error
         } => {
             fs::create_dir_all(&root_dir)?;
             let linksim = Ns3Full::new(root_dir, ns3_dir, window);
-            let spec = parsimon_core::Spec::builder()
-                .nodes(network.nodes)
-                .links(network.links)
-                .flows(flows)
-                .linksim(linksim)
-                .build();
-            parsimon_core::run(spec)?
+            parsimon_core::run(spec, linksim, DefaultClustering)?
         }
     };
     Ok(network)

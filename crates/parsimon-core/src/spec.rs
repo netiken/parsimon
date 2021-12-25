@@ -1,29 +1,25 @@
 use std::collections::HashSet;
 
-use crate::{
-    linksim::LinkSim,
-    network::{
-        types::{Link, Node, NodeId},
-        Flow, FlowId, Network, NodeKind, TopologyError,
-    },
+use crate::network::{
+    types::{Link, Node, NodeId},
+    Flow, FlowId, Network, NodeKind, TopologyError,
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
-pub struct Spec<S> {
+pub struct Spec {
     nodes: Vec<Node>,
     links: Vec<Link>,
     flows: Vec<Flow>,
-    linksim: S,
 }
 
-impl<S: LinkSim> Spec<S> {
+impl Spec {
     /// Validate a specification, producing a `ValidSpec`.
     ///
     /// Correctness properties:
     ///
     /// - Every flow must have a valid source and destination
     // TODO: Flow IDs should be unique
-    pub(crate) fn validate(self) -> Result<ValidSpec<S>, SpecError> {
+    pub(crate) fn validate(self) -> Result<ValidSpec, SpecError> {
         let hosts = self
             .nodes
             .iter()
@@ -45,7 +41,6 @@ impl<S: LinkSim> Spec<S> {
         Ok(ValidSpec {
             network,
             flows: self.flows,
-            linksim: self.linksim,
         })
     }
 }
@@ -54,13 +49,12 @@ impl<S: LinkSim> Spec<S> {
 /// flows are guaranteed to satisfy properties listed in `Network::new()` and
 /// `Spec::validate()`.
 #[derive(Debug)]
-pub(crate) struct ValidSpec<S> {
+pub(crate) struct ValidSpec {
     pub(crate) network: Network,
     pub(crate) flows: Vec<Flow>,
-    pub(crate) linksim: S,
 }
 
-impl<S: LinkSim> ValidSpec<S> {
+impl ValidSpec {
     pub(crate) fn collect_flows(&self) -> Vec<Flow> {
         self.flows.iter().cloned().collect()
     }
@@ -80,10 +74,7 @@ pub enum SpecError {
 
 #[cfg(test)]
 mod tests {
-    use petgraph::graph::EdgeIndex;
-
-    use crate::linksim::LinkSimResult;
-    use crate::network::{FlowId, SimNetwork};
+    use crate::network::FlowId;
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
 
@@ -129,22 +120,13 @@ mod tests {
         ));
     }
 
-    struct TestLinkSim;
-
-    impl LinkSim for TestLinkSim {
-        fn simulate(&self, _: &SimNetwork, _: EdgeIndex) -> LinkSimResult {
-            unreachable!()
-        }
-    }
-
-    fn spec() -> Spec<TestLinkSim> {
+    fn spec() -> Spec {
         let (nodes, links) = testing::eight_node_config();
         let flows = flows();
         Spec {
             nodes,
             links,
             flows,
-            linksim: TestLinkSim,
         }
     }
 

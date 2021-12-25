@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use petgraph::graph::EdgeIndex;
 
+use crate::network::SimNetwork;
+
 /// A cluster of edges with a representative member.
 #[derive(Debug, derive_new::new)]
 pub struct Cluster {
@@ -25,4 +27,21 @@ impl Cluster {
             pub fn members(&self) -> impl Iterator<Item = &EdgeIndex>;
         }
     }
+}
+
+pub trait ClusteringAlgo {
+    fn cluster(&self, network: &mut SimNetwork);
+}
+
+impl<C: ClusteringAlgo> ClusteringAlgo for &C {
+    fn cluster(&self, network: &mut SimNetwork) {
+        network.cluster(*self);
+    }
+}
+
+#[derive(Debug)]
+pub struct DefaultClustering;
+
+impl ClusteringAlgo for DefaultClustering {
+    fn cluster(&self, _: &mut SimNetwork) {}
 }
