@@ -110,7 +110,8 @@ impl SimNetwork {
     where
         C: ClusteringAlgo,
     {
-        algorithm.cluster(self)
+        let clusters = algorithm.cluster(self);
+        self.clusters = clusters;
     }
 
     pub fn into_delays<S>(self, sim: S) -> Result<DelayNetwork, SimNetworkError>
@@ -154,6 +155,11 @@ impl SimNetwork {
                 .map(|id| flow_map.get(&id).unwrap().to_owned().to_owned())
                 .collect()
         })
+    }
+
+    /// Get a reference to the sim network's clusters.
+    pub fn clusters(&self) -> &[Cluster] {
+        self.clusters.as_ref()
     }
 
     delegate::delegate! {

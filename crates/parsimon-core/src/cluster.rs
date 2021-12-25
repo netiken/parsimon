@@ -5,7 +5,7 @@ use petgraph::graph::EdgeIndex;
 use crate::network::SimNetwork;
 
 /// A cluster of edges with a representative member.
-#[derive(Debug, derive_new::new)]
+#[derive(Debug, Clone, derive_new::new)]
 pub struct Cluster {
     representative: EdgeIndex,
     members: HashSet<EdgeIndex>,
@@ -30,18 +30,21 @@ impl Cluster {
 }
 
 pub trait ClusteringAlgo {
-    fn cluster(&self, network: &mut SimNetwork);
+    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster>;
 }
 
 impl<C: ClusteringAlgo> ClusteringAlgo for &C {
-    fn cluster(&self, network: &mut SimNetwork) {
-        network.cluster(*self);
+    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
+        (*self).cluster(network)
     }
 }
 
+/// A no-op clustering algorithm.
 #[derive(Debug)]
 pub struct DefaultClustering;
 
 impl ClusteringAlgo for DefaultClustering {
-    fn cluster(&self, _: &mut SimNetwork) {}
+    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
+        network.clusters().to_vec()
+    }
 }
