@@ -3,10 +3,9 @@ use std::path::{Path, PathBuf};
 
 use linksim_impls::ns3::full::Ns3Full;
 use parsimon_core::cluster::DefaultClustering;
-pub use parsimon_core::network::{DelayNetwork, Flow, FlowId, NodeId};
-pub use parsimon_core::units::*;
-
 use parsimon_core::network::types::{Link, Node};
+use parsimon_core::network::{DelayNetwork, Flow};
+use parsimon_core::units::Bytes;
 
 pub fn run_from_files(
     network: impl AsRef<Path>,
