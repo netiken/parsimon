@@ -67,7 +67,7 @@ impl Network {
             topology,
             routes: self.routes.clone(),
             clusters,
-            flows,
+            flows: flows.into_iter().map(|f| (f.id, f)).collect(),
         }
     }
 
@@ -101,8 +101,8 @@ pub struct SimNetwork {
 
     // Channel clustering
     clusters: Vec<Cluster>,
-    // Each channel references these flows by index
-    flows: Vec<Flow>,
+    // Each channel references these flows by ID
+    flows: HashMap<FlowId, Flow>,
 }
 
 impl SimNetwork {
@@ -150,9 +150,8 @@ impl SimNetwork {
 
     pub fn flows_on(&self, edge: EdgeIndex) -> Option<Vec<Flow>> {
         self.edge(edge).map(|chan| {
-            let flow_map = self.flows().map(|f| (f.id, f)).collect::<HashMap<_, _>>();
-            chan.flows()
-                .map(|id| flow_map.get(&id).unwrap().to_owned().to_owned())
+            chan.flow_ids()
+                .map(|id| self.flows.get(&id).unwrap().to_owned().to_owned())
                 .collect()
         })
     }
@@ -184,11 +183,6 @@ impl SimNetwork {
         to self.clusters {
             #[call(len)]
             pub fn nr_clusters(&self) -> usize;
-        }
-
-        to self.flows {
-            #[call(iter)]
-            pub fn flows(&self) -> impl Iterator<Item = &Flow>;
         }
     }
 }

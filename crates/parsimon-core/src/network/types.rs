@@ -89,7 +89,7 @@ impl FlowChannel {
     }
 
     /// Get an iterator over the traced channel's flow IDs
-    pub fn flows(&self) -> impl Iterator<Item = FlowId> + '_ {
+    pub fn flow_ids(&self) -> impl Iterator<Item = FlowId> + '_ {
         self.flows.iter().copied()
     }
 
