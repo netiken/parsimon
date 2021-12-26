@@ -129,6 +129,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "clustering-impls"
+version = "0.1.0"
+dependencies = [
+ "derive-new",
+ "parsimon-core",
+]
+
+[[package]]
 name = "cmd_lib"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

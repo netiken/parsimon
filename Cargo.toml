@@ -3,5 +3,6 @@ members = [
     "crates/parsimon-core",
     "crates/parsimon-driver",
     "crates/linksim-impls",
+    "crates/clustering-impls",
     "crates/ns3-frontend",
 ]

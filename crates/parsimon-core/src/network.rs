@@ -22,7 +22,7 @@ use crate::{
 use self::{
     routing::Routes,
     topology::Topology,
-    types::{Channel, EDistChannel, Link, Node, TracedChannel},
+    types::{Channel, EDistChannel, FlowChannel, Link, Node},
 };
 
 #[derive(Debug)]
@@ -96,7 +96,7 @@ impl TraversableNetwork<Channel> for Network {
 
 #[derive(Debug)]
 pub struct SimNetwork {
-    topology: Topology<TracedChannel>,
+    topology: Topology<FlowChannel>,
     routes: Routes,
 
     // Channel clustering
@@ -168,7 +168,12 @@ impl SimNetwork {
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
 
             #[call(edge_weight)]
-            pub fn edge(&self, idx: EdgeIndex) -> Option<&TracedChannel>;
+            pub fn edge(&self, idx: EdgeIndex) -> Option<&FlowChannel>;
+
+            #[call(edge_weights)]
+            pub fn edges(&self) -> impl Iterator<Item = &FlowChannel>;
+
+            pub fn edge_indices(&self) -> impl Iterator<Item = EdgeIndex>;
         }
 
         to self.topology.links {
@@ -188,8 +193,8 @@ impl SimNetwork {
     }
 }
 
-impl TraversableNetwork<TracedChannel> for SimNetwork {
-    fn topology(&self) -> &Topology<TracedChannel> {
+impl TraversableNetwork<FlowChannel> for SimNetwork {
+    fn topology(&self) -> &Topology<FlowChannel> {
         &self.topology
     }
 

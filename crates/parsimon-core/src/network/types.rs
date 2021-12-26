@@ -59,7 +59,7 @@ pub(crate) struct Channel {
 }
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
-pub struct TracedChannel {
+pub struct FlowChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: Gbps,
@@ -67,7 +67,7 @@ pub struct TracedChannel {
     pub(crate) flows: Vec<FlowId>,
 }
 
-impl TracedChannel {
+impl FlowChannel {
     pub(crate) fn new_from(chan: &Channel) -> Self {
         Self {
             src: chan.src,
@@ -115,7 +115,7 @@ pub struct EDistChannel {
 }
 
 impl EDistChannel {
-    pub(crate) fn new_from(chan: &TracedChannel) -> Self {
+    pub(crate) fn new_from(chan: &FlowChannel) -> Self {
         Self {
             src: chan.src,
             dst: chan.dst,

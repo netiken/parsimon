@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
-use crate::network::types::{Channel, Link, Node, NodeId, NodeKind, TracedChannel};
+use crate::network::types::{Channel, FlowChannel, Link, Node, NodeId, NodeKind};
 
 use super::types::EDistChannel;
 
@@ -108,7 +108,7 @@ impl Topology<Channel> {
     }
 }
 
-impl Topology<TracedChannel> {
+impl Topology<FlowChannel> {
     pub(crate) fn new_traced(topology: &Topology<Channel>) -> Self {
         // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
         // iteration order matches the order of indices.
@@ -119,7 +119,7 @@ impl Topology<TracedChannel> {
         for eidx in topology.graph.edge_indices() {
             let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
             let chan = &topology.graph[eidx];
-            g.add_edge(a, b, TracedChannel::new_from(&chan));
+            g.add_edge(a, b, FlowChannel::new_from(&chan));
         }
         Topology {
             graph: g,
@@ -130,7 +130,7 @@ impl Topology<TracedChannel> {
 }
 
 impl Topology<EDistChannel> {
-    pub(crate) fn new_edist(topology: &Topology<TracedChannel>) -> Self {
+    pub(crate) fn new_edist(topology: &Topology<FlowChannel>) -> Self {
         // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
         // iteration order matches the order of indices.
         let mut g = DiGraph::new();
