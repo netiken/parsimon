@@ -18,6 +18,6 @@ pub fn max_wmape_xs(a: &[Flow], b: &[Flow]) -> f64 {
     );
     std::cmp::max_by(s_wmape, d_wmape, |x, y| {
         x.partial_cmp(y)
-            .expect("`max_mae_xs`: failed to compare floats")
+            .expect("`max_wmape_xs`: failed to compare floats")
     })
 }
