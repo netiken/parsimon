@@ -13,7 +13,7 @@ pub struct GreedyClustering<R, D> {
 
 impl<R, D> ClusteringAlgo for GreedyClustering<R, D>
 where
-    R: Clone + Copy + PartialOrd + Ord,
+    R: Clone + Copy + PartialOrd,
     D: Fn(&[Flow], &[Flow]) -> R,
 {
     fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
