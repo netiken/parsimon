@@ -3,7 +3,7 @@ use parsimon_core::network::Flow;
 use crate::utils;
 
 // PRECONDITION: flows in `a` and `b` are sorted by start time
-pub(crate) fn max_wmape_xs(a: &[Flow], b: &[Flow]) -> f64 {
+pub fn max_wmape_xs(a: &[Flow], b: &[Flow]) -> f64 {
     let s_a = utils::percentiles_100(a, |f| f.size);
     let s_b = utils::percentiles_100(b, |f| f.size);
     let s_mae = utils::wmape(

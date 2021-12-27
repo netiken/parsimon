@@ -1,6 +1,6 @@
 use parsimon_core::{network::Flow, units::Nanosecs};
 
-pub(crate) fn percentiles_100<T, U, F>(data: &[T], extract: F) -> Vec<U>
+pub fn percentiles_100<T, U, F>(data: &[T], extract: F) -> Vec<U>
 where
     U: Clone + Copy + PartialOrd + Ord,
     F: Fn(&T) -> U,
@@ -17,8 +17,9 @@ where
         .collect()
 }
 
+// Weighted mean absolute percentage error (WMAPE)
 // PRECONDITION: `a` cannot be all zeroes
-pub(crate) fn wmape(a: &[f64], b: &[f64]) -> f64 {
+pub fn wmape(a: &[f64], b: &[f64]) -> f64 {
     assert!(a.len() == b.len());
     a.iter()
         .zip(b.iter())
@@ -28,7 +29,7 @@ pub(crate) fn wmape(a: &[f64], b: &[f64]) -> f64 {
 }
 
 // PRECONDITION: the flows are sorted by start time
-pub(crate) fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
+pub fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
     flows
         .windows(2)
         .map(|win| win[1].start - win[0].start)
