@@ -1,6 +1,6 @@
 use parsimon_core::{network::Flow, units::Nanosecs};
 
-pub fn percentiles_100<T, U, F>(data: &[T], extract: F) -> Vec<U>
+pub fn percentiles<T, U, F>(data: &[T], extract: F) -> Vec<U>
 where
     U: Clone + Copy + PartialOrd + Ord,
     F: Fn(&T) -> U,
@@ -9,9 +9,9 @@ where
     let mut points = data.iter().map(|x| extract(x)).collect::<Vec<_>>();
     points.sort();
     let len = points.len();
-    (0..100)
+    (0..1000)
         .map(|p| {
-            let i = ((p as f64 / 100.0) * len as f64).floor() as usize;
+            let i = ((p as f64 / 1000.0) * len as f64).floor() as usize;
             points[i]
         })
         .collect()
@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn percentiles_sorts_and_indexes_correctly() {
         assert_eq!(
-            percentiles_100(&[2, 1], |&x| x),
+            percentiles(&[2, 1], |&x| x),
             iter::repeat(1)
                 .take(50)
                 .chain(iter::repeat(2).take(50))
