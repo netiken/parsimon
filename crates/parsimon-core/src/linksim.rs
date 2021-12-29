@@ -11,6 +11,12 @@ pub trait LinkSim {
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult;
 }
 
+impl<T: LinkSim> LinkSim for &T {
+    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
+        (*self).simulate(network, edge)
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum LinkSimError {
     #[error("Edge {} does not exist", .0.index())]
