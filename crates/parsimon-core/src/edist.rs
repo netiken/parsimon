@@ -5,7 +5,7 @@ use rand::prelude::*;
 
 use crate::units::Bytes;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EDistBuckets {
     inner: Vec<(Range<Bytes>, EDist)>,
 }

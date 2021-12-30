@@ -50,7 +50,7 @@ impl Link {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, derive_new::new, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize)]
 pub(crate) struct Channel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
@@ -58,7 +58,7 @@ pub(crate) struct Channel {
     pub(crate) delay: Nanosecs,
 }
 
-#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct FlowChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
@@ -104,7 +104,7 @@ impl FlowChannel {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct EDistChannel {
     pub(crate) src: NodeId,

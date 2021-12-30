@@ -6,14 +6,14 @@ use crate::network::types::{Channel, FlowChannel, Link, Node, NodeId, NodeKind};
 
 use super::types::EDistChannel;
 
-#[derive(Debug)]
-pub(crate) struct Topology<C> {
+#[derive(Debug, Clone)]
+pub(crate) struct Topology<C: Clone> {
     pub(crate) graph: DiGraph<Node, C>,
     pub(crate) id2idx: HashMap<NodeId, NodeIndex>,
     pub(crate) links: Vec<Link>,
 }
 
-impl<C> Topology<C> {
+impl<C: Clone> Topology<C> {
     delegate::delegate! {
         to self.id2idx {
             #[call(get)]

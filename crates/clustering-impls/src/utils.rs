@@ -47,8 +47,8 @@ mod tests {
         assert_eq!(
             percentiles(&[2, 1], |&x| x),
             iter::repeat(1)
-                .take(50)
-                .chain(iter::repeat(2).take(50))
+                .take(500)
+                .chain(iter::repeat(2).take(500))
                 .collect::<Vec<_>>()
         )
     }

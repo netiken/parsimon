@@ -25,7 +25,7 @@ use self::{
     types::{Channel, EDistChannel, FlowChannel, Link, Node},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Network {
     topology: Topology<Channel>,
     routes: Routes,
@@ -94,7 +94,7 @@ impl TraversableNetwork<Channel> for Network {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SimNetwork {
     topology: Topology<FlowChannel>,
     routes: Routes,
@@ -206,7 +206,7 @@ pub enum SimNetworkError {
     EDist(#[from] EDistError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
@@ -266,7 +266,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
     }
 }
 
-trait TraversableNetwork<C> {
+trait TraversableNetwork<C: Clone> {
     fn topology(&self) -> &Topology<C>;
 
     fn routes(&self) -> &Routes;
@@ -312,7 +312,7 @@ mod tests {
 
     use super::*;
 
-    fn find_edge<C>(topo: &Topology<C>, src: NodeId, dst: NodeId) -> Option<EdgeIndex> {
+    fn find_edge<C: Clone>(topo: &Topology<C>, src: NodeId, dst: NodeId) -> Option<EdgeIndex> {
         topo.idx_of(&src)
             .and_then(|&a| topo.idx_of(&dst).map(|&b| (a, b)))
             .and_then(|(a, b)| topo.graph.find_edge(a, b))
