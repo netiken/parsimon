@@ -43,6 +43,12 @@ macro_rules! unit {
                 Self(inner.round() as u64)
             }
         }
+
+        impl From<$name> for f64 {
+            fn from(val: $name) -> Self {
+                val.into_f64()
+            }
+        }
     };
 }
 
