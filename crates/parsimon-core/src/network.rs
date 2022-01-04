@@ -161,6 +161,11 @@ impl SimNetwork {
         self.clusters.as_ref()
     }
 
+    /// Set the sim network's clusters.
+    pub fn set_clusters(&mut self, clusters: Vec<Cluster>) {
+        self.clusters = clusters;
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]
