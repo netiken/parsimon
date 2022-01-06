@@ -50,13 +50,48 @@ impl Link {
     }
 }
 
+pub trait Channel {
+    fn src(&self) -> NodeId;
+
+    fn dst(&self) -> NodeId;
+
+    fn bandwidth(&self) -> Gbps;
+
+    fn delay(&self) -> Nanosecs;
+}
+
+// All channels just copy these fields
+macro_rules! channel_impl {
+    ($name: ty) => {
+        impl Channel for $name {
+            fn src(&self) -> NodeId {
+                self.src
+            }
+
+            fn dst(&self) -> NodeId {
+                self.dst
+            }
+
+            fn bandwidth(&self) -> Gbps {
+                self.bandwidth
+            }
+
+            fn delay(&self) -> Nanosecs {
+                self.delay
+            }
+        }
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize)]
-pub(crate) struct Channel {
+pub(crate) struct BasicChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: Gbps,
     pub(crate) delay: Nanosecs,
 }
+
+channel_impl!(BasicChannel);
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct FlowChannel {
@@ -67,8 +102,10 @@ pub struct FlowChannel {
     pub(crate) flows: Vec<FlowId>,
 }
 
+channel_impl!(FlowChannel);
+
 impl FlowChannel {
-    pub(crate) fn new_from(chan: &Channel) -> Self {
+    pub(crate) fn new_from(chan: &BasicChannel) -> Self {
         Self {
             src: chan.src,
             dst: chan.dst,
@@ -76,16 +113,6 @@ impl FlowChannel {
             delay: chan.delay,
             flows: Vec::new(),
         }
-    }
-
-    /// Get a reference to the traced channel's src.
-    pub fn src(&self) -> NodeId {
-        self.src
-    }
-
-    /// Get a reference to the traced channel's dst.
-    pub fn dst(&self) -> NodeId {
-        self.dst
     }
 
     /// Get an iterator over the traced channel's flow IDs
@@ -123,6 +150,27 @@ impl EDistChannel {
             delay: chan.delay,
             dists: EDistBuckets::new_empty(),
         }
+    }
+}
+
+channel_impl!(EDistChannel);
+
+#[derive(Debug)]
+pub struct Path<'a, C> {
+    inner: Vec<&'a C>,
+}
+
+impl<'a, C: Channel> Path<'a, C> {
+    pub fn new(channels: Vec<&'a C>) -> Self {
+        Self { inner: channels }
+    }
+
+    pub fn delay(&self) -> Nanosecs {
+        self.inner.iter().map(|&c| c.delay()).sum()
+    }
+
+    pub fn bandwidths(&self) -> impl Iterator<Item = Gbps> + '_ {
+        self.inner.iter().map(|&c| c.bandwidth())
     }
 }
 

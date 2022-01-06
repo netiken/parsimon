@@ -22,12 +22,12 @@ use crate::{
 use self::{
     routing::Routes,
     topology::Topology,
-    types::{Channel, EDistChannel, FlowChannel, Link, Node},
+    types::{BasicChannel, EDistChannel, FlowChannel, Link, Node},
 };
 
 #[derive(Debug, Clone)]
 pub struct Network {
-    topology: Topology<Channel>,
+    topology: Topology<BasicChannel>,
     routes: Routes,
 }
 
@@ -84,8 +84,8 @@ impl Network {
     }
 }
 
-impl TraversableNetwork<Channel> for Network {
-    fn topology(&self) -> &Topology<Channel> {
+impl TraversableNetwork<BasicChannel> for Network {
+    fn topology(&self) -> &Topology<BasicChannel> {
         &self.topology
     }
 
@@ -166,6 +166,12 @@ impl SimNetwork {
         })
     }
 
+    pub fn node(&self, id: NodeId) -> Option<&Node> {
+        self.topology
+            .idx_of(&id)
+            .map(|&idx| &self.topology.graph[idx])
+    }
+
     /// Get a reference to the sim network's clusters.
     pub fn clusters(&self) -> &[Cluster] {
         self.clusters.as_ref()
@@ -174,6 +180,15 @@ impl SimNetwork {
     /// Set the sim network's clusters.
     pub fn set_clusters(&mut self, clusters: Vec<Cluster>) {
         self.clusters = clusters;
+    }
+
+    pub fn path(
+        &self,
+        src: NodeId,
+        dst: NodeId,
+        choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
+    ) -> Path<FlowChannel> {
+        <Self as TraversableNetwork<FlowChannel>>::path(&self, src, dst, choose)
     }
 
     delegate::delegate! {
@@ -281,7 +296,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
     }
 }
 
-trait TraversableNetwork<C: Clone> {
+trait TraversableNetwork<C: Clone + Channel> {
     fn topology(&self) -> &Topology<C>;
 
     fn routes(&self) -> &Routes;
@@ -314,6 +329,19 @@ trait TraversableNetwork<C: Clone> {
             }
         }
         acc.into_iter()
+    }
+
+    fn path(
+        &self,
+        src: NodeId,
+        dst: NodeId,
+        choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
+    ) -> Path<C> {
+        let channels = self
+            .edge_indices_between(src, dst, choose)
+            .map(|eidx| &self.topology().graph[eidx])
+            .collect();
+        Path::new(channels)
     }
 }
 

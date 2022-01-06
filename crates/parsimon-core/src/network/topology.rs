@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
-use crate::network::types::{Channel, FlowChannel, Link, Node, NodeId, NodeKind};
+use crate::network::types::{BasicChannel, FlowChannel, Link, Node, NodeId, NodeKind};
 
 use super::types::EDistChannel;
 
@@ -30,7 +30,7 @@ impl<C: Clone> Topology<C> {
     }
 }
 
-impl Topology<Channel> {
+impl Topology<BasicChannel> {
     /// Creates a network topology from a list of nodes and links. This function returns an error if
     /// the given specification fails to produce a valid topology. The checks are not exhaustive.
     ///
@@ -73,8 +73,16 @@ impl Topology<Channel> {
             referenced_nodes.insert(a);
             referenced_nodes.insert(b);
             // Channels are unidirectional
-            g.add_edge(idx_of(a), idx_of(b), Channel::new(a, b, bandwidth, delay));
-            g.add_edge(idx_of(b), idx_of(a), Channel::new(b, a, bandwidth, delay));
+            g.add_edge(
+                idx_of(a),
+                idx_of(b),
+                BasicChannel::new(a, b, bandwidth, delay),
+            );
+            g.add_edge(
+                idx_of(b),
+                idx_of(a),
+                BasicChannel::new(b, a, bandwidth, delay),
+            );
         }
         // CORRECTNESS: Every node must be referenced by some link.
         for &id in id2idx.keys() {
@@ -109,7 +117,7 @@ impl Topology<Channel> {
 }
 
 impl Topology<FlowChannel> {
-    pub(crate) fn new_traced(topology: &Topology<Channel>) -> Self {
+    pub(crate) fn new_traced(topology: &Topology<BasicChannel>) -> Self {
         // CORRECTNESS: For nodes and edges, `petgraph` guarantees that the
         // iteration order matches the order of indices.
         let mut g = DiGraph::new();
@@ -182,7 +190,7 @@ mod tests {
     #[test]
     fn empty_topology_succeeds() {
         assert!(
-            Topology::<Channel>::new(&[], &[]).is_ok(),
+            Topology::<BasicChannel>::new(&[], &[]).is_ok(),
             "failed to create empty topology"
         );
     }
@@ -198,7 +206,8 @@ mod tests {
     #[test]
     fn eight_node_topology_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
-        let topo = Topology::<Channel>::new(&nodes, &links).context("failed to create topology")?;
+        let topo =
+            Topology::<BasicChannel>::new(&nodes, &links).context("failed to create topology")?;
         insta::assert_yaml_snapshot!(topo.graph);
         Ok(())
     }
@@ -246,7 +255,7 @@ mod tests {
         let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
         let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
         let l3 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default()); // error
-        let res = Topology::<Channel>::new(&[n1, n2, n3], &[l1, l2, l3]);
+        let res = Topology::<BasicChannel>::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::DuplicateLink { .. })));
     }
 
@@ -282,14 +291,14 @@ mod tests {
     fn new_topo_old_topo_equiv() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
         let topo1 =
-            Topology::<Channel>::new(&nodes, &links).context("failed to create topology")?;
+            Topology::<BasicChannel>::new(&nodes, &links).context("failed to create topology")?;
         let topo2 = Topology::new_traced(&topo1);
         // Iteration order matches the order of indices
         for (n1, n2) in topo1.graph.node_weights().zip(topo2.graph.node_weights()) {
             assert_eq!(n1, n2);
         }
         for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
-            let e2 = &Channel::new(e2.src, e2.dst, Gbps::new(100), Nanosecs::new(1000));
+            let e2 = &BasicChannel::new(e2.src, e2.dst, Gbps::new(100), Nanosecs::new(1000));
             assert_eq!(e1, e2);
         }
         Ok(())
