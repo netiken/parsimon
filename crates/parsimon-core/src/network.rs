@@ -119,17 +119,9 @@ impl SimNetwork {
         S: LinkSim + Sync,
     {
         let mut topology = Topology::new_edist(&self.topology);
-        let (s, r) = crossbeam_channel::unbounded();
-        // Simulate all clusters in parallel.
-        self.clusters.par_iter().try_for_each_with(s, |s, c| {
-            let edge = c.representative();
-            let data = sim.simulate(&self, edge)?;
-            s.send((edge, data)).unwrap(); // the channel should never become disconnected
-            Result::<(), SimNetworkError>::Ok(())
-        })?;
+        let eidx2data = self.simulate_clusters(sim)?;
         // Every channel gets filled with delay distributions. All channels in the same cluster get
         // filled using the cluster representative's data.
-        let eidx2data = r.iter().collect::<HashMap<_, _>>();
         for cluster in &self.clusters {
             let representative = cluster.representative();
             for &member in cluster.members() {
@@ -146,6 +138,24 @@ impl SimNetwork {
             topology,
             routes: self.routes.clone(),
         })
+    }
+
+    pub fn simulate_clusters<S>(
+        &self,
+        sim: S,
+    ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
+    where
+        S: LinkSim + Sync,
+    {
+        let (s, r) = crossbeam_channel::unbounded();
+        // Simulate all clusters in parallel.
+        self.clusters.par_iter().try_for_each_with(s, |s, c| {
+            let edge = c.representative();
+            let data = sim.simulate(self, edge)?;
+            s.send((edge, data)).unwrap(); // the channel should never become disconnected
+            Result::<(), SimNetworkError>::Ok(())
+        })?;
+        Ok(r.iter().collect())
     }
 
     pub fn flows_on(&self, edge: EdgeIndex) -> Option<Vec<Flow>> {
@@ -229,7 +239,7 @@ impl DelayNetwork {
         R: Rng,
     {
         let edges = self
-            .edge_indices_between(src, dst, |choices| choices.first())
+            .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
             .collect::<Vec<_>>();
         if edges.is_empty() {
             return None;
@@ -284,7 +294,7 @@ trait TraversableNetwork<C: Clone> {
         &self,
         src: NodeId,
         dst: NodeId,
-        choose: impl Fn(&[NodeId]) -> Option<&NodeId>,
+        mut choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
     ) -> std::vec::IntoIter<EdgeIndex> {
         let mut acc = Vec::new();
         let mut cur = src;
