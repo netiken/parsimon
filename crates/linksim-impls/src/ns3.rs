@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -8,7 +8,7 @@ use parsimon_core::{
     linksim::{LinkSim, LinkSimError, LinkSimResult},
     network::{
         types::{Link, Node},
-        Channel, EdgeIndex, SimNetwork,
+        Channel, EdgeIndex, NodeId, SimNetwork,
     },
     units::Bytes,
 };
@@ -33,7 +33,7 @@ impl Ns3Link {
 impl LinkSim for Ns3Link {
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
-        let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
+        let mut flows = network.flows_on(edge).unwrap(); // we already know the channel exists
 
         // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectfully
         let (srcs, dsts): (HashSet<_>, HashSet<_>) = flows.iter().map(|f| (f.src, f.dst)).unzip();
@@ -45,7 +45,7 @@ impl LinkSim for Ns3Link {
             .chain(dsts.iter())
             .chain([&bsrc, &bdst].into_iter())
             .collect::<HashSet<_>>();
-        let nodes = nodes
+        let mut nodes = nodes
             .into_iter()
             .map(|&id| network.node(id).unwrap())
             .cloned()
@@ -85,6 +85,24 @@ impl LinkSim for Ns3Link {
         // Now include the bottleneck channel
         let bottleneck = Link::new(bsrc, bdst, chan.bandwidth(), chan.delay());
         links.push(bottleneck);
+
+        // The last step is to re-assign node IDs so that they're contiguous.
+        let old2new = nodes
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.id, NodeId::new(i)))
+            .collect::<HashMap<_, _>>();
+        for node in nodes.iter_mut() {
+            node.id = *old2new.get(&node.id).unwrap();
+        }
+        for link in links.iter_mut() {
+            link.a = *old2new.get(&link.a).unwrap();
+            link.b = *old2new.get(&link.b).unwrap();
+        }
+        for flow in flows.iter_mut() {
+            flow.src = *old2new.get(&flow.src).unwrap();
+            flow.dst = *old2new.get(&flow.dst).unwrap();
+        }
 
         // Set up and run simulation
         let mut data_dir = PathBuf::from(&self.root_dir);
