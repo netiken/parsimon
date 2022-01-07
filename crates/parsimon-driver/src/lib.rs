@@ -5,7 +5,7 @@ use linksim_impls::ns3::Ns3Link;
 use parsimon_core::cluster::DefaultClustering;
 use parsimon_core::network::types::{Link, Node};
 use parsimon_core::network::{DelayNetwork, Flow};
-use parsimon_core::units::Bytes;
+use parsimon_core::units::{Bytes, Nanosecs};
 
 pub fn run_from_files(
     network: impl AsRef<Path>,
@@ -27,9 +27,10 @@ pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error
             root_dir,
             ns3_dir,
             window,
+            base_rtt,
         } => {
             fs::create_dir_all(&root_dir)?;
-            let linksim = Ns3Link::new(root_dir, ns3_dir, window);
+            let linksim = Ns3Link::new(root_dir, ns3_dir, window, base_rtt);
             parsimon_core::run(spec, linksim, DefaultClustering)?
         }
     };
@@ -86,5 +87,6 @@ pub enum LinkSimKind {
         root_dir: PathBuf,
         ns3_dir: PathBuf,
         window: Bytes,
+        base_rtt: Nanosecs,
     },
 }

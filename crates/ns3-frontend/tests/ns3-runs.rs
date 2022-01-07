@@ -36,6 +36,7 @@ fn ns3_runs() -> anyhow::Result<()> {
         .nodes(nodes)
         .links(links)
         .window(Bytes::new(100_000))
+        .base_rtt(Nanosecs::new(8_000))
         .flows(flows)
         .build();
     assert_eq!(sim.run()?.len(), 2);

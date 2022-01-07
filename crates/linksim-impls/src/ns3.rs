@@ -10,7 +10,7 @@ use parsimon_core::{
         types::{Link, Node},
         Channel, EdgeIndex, NodeId, SimNetwork,
     },
-    units::Bytes,
+    units::{Bytes, Nanosecs},
 };
 
 #[derive(Debug)]
@@ -18,14 +18,21 @@ pub struct Ns3Link {
     root_dir: PathBuf,
     ns3_dir: PathBuf,
     window: Bytes,
+    base_rtt: Nanosecs,
 }
 
 impl Ns3Link {
-    pub fn new(root_dir: impl AsRef<Path>, ns3_dir: impl AsRef<Path>, window: Bytes) -> Self {
+    pub fn new(
+        root_dir: impl AsRef<Path>,
+        ns3_dir: impl AsRef<Path>,
+        window: Bytes,
+        base_rtt: Nanosecs,
+    ) -> Self {
         Self {
             root_dir: PathBuf::from(root_dir.as_ref()),
             ns3_dir: PathBuf::from(ns3_dir.as_ref()),
             window,
+            base_rtt,
         }
     }
 }
@@ -113,6 +120,7 @@ impl LinkSim for Ns3Link {
             .nodes(nodes)
             .links(links)
             .window(self.window)
+            .base_rtt(self.base_rtt)
             .flows(flows)
             .build();
         let records = sim.run().map_err(|e| anyhow::anyhow!(e))?;

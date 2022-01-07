@@ -8,7 +8,7 @@ use parsimon_core::{
         types::{Link, Node},
         FctRecord, NodeKind,
     },
-    units::Bytes,
+    units::{Bytes, Nanosecs},
 };
 
 #[derive(Debug, typed_builder::TypedBuilder)]
@@ -20,6 +20,7 @@ pub struct Ns3Simulation {
     nodes: Vec<Node>,
     links: Vec<Link>,
     window: Bytes,
+    base_rtt: Nanosecs,
     flows: Vec<Flow>,
 }
 
@@ -60,12 +61,13 @@ impl Ns3Simulation {
         let data_dir = std::fs::canonicalize(&self.data_dir)?;
         let ns3_dir = std::fs::canonicalize(&self.ns3_dir)?;
         let window = self.window.into_u64().to_string();
+        let base_rtt = self.base_rtt.into_u64().to_string();
         let extra_args = &[
             "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};
-            python2 run.py --root ${data_dir} --fwin ${window} $[extra_args] > ${data_dir}/output.txt 2>&1
+            python2 run.py --root ${data_dir} --fwin ${window} --base_rtt ${base_rtt} $[extra_args] > ${data_dir}/output.txt 2>&1
         }
     }
 }
