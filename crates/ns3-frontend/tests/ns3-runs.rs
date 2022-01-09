@@ -38,6 +38,7 @@ fn ns3_runs() -> anyhow::Result<()> {
         .base_rtt(Nanosecs::new(8_000))
         .flows(flows)
         .build();
-    assert_eq!(sim.run()?.len(), 2);
+    let records = sim.run()?;
+    assert_eq!(records.len(), 2);
     Ok(())
 }
