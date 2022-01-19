@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use linksim_impls::ns3::Ns3Link;
 use parsimon_core::cluster::DefaultClustering;
 use parsimon_core::network::types::{Link, Node};
-use parsimon_core::network::{DelayNetwork, Flow};
+use parsimon_core::network::{DelayNetwork, Flow, Network};
 use parsimon_core::units::{Bytes, Nanosecs};
 
 pub fn run_from_files(
@@ -47,6 +47,11 @@ pub fn read_network_spec(path: impl AsRef<Path>) -> Result<NetworkSpec, Error> {
     Ok(network)
 }
 
+pub fn read_network(network_spec: impl AsRef<Path>) -> Result<Network, Error> {
+    let spec = read_network_spec(network_spec)?;
+    Ok(Network::new(&spec.nodes, &spec.links)?)
+}
+
 pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
     let contents = std::fs::read_to_string(path.as_ref())?;
     let flows: Vec<Flow> = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
@@ -72,6 +77,9 @@ pub enum Error {
 
     #[error("failed to run Parsimon")]
     ParsimonCore(#[from] parsimon_core::run::Error),
+
+    #[error("invalid topology")]
+    Topology(#[from] parsimon_core::network::TopologyError),
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

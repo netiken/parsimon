@@ -19,7 +19,12 @@ where
 
 // PRECONDITION: the flows are sorted by start time
 pub fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
-    assert!(flows.len() >= 2, "deltas: `flows` not long enough");
+    let nr_flows = flows.len();
+    assert!(
+        nr_flows >= 2,
+        "deltas: `flows` not long enough, `nr_flows` = {}",
+        nr_flows
+    );
     flows
         .windows(2)
         .map(|win| win[1].start - win[0].start)

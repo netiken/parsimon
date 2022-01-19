@@ -4,6 +4,7 @@ pub mod types;
 
 use std::collections::HashMap;
 
+use petgraph::graph::NodeIndex;
 use rand::prelude::*;
 use rayon::prelude::*;
 
@@ -69,6 +70,25 @@ impl Network {
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
         }
+    }
+
+    pub fn host_ids(&self) -> impl Iterator<Item = NodeId> + '_ {
+        self.nodes().filter_map(|n| match n.kind {
+            NodeKind::Host => Some(n.id),
+            NodeKind::Switch => None,
+        })
+    }
+
+    pub fn neighbors(&self, id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
+        let idx = self
+            .topology
+            .idx_of(&id)
+            .copied()
+            .unwrap_or(NodeIndex::new(usize::MAX));
+        self.topology
+            .graph
+            .neighbors(idx)
+            .map(|idx| self.topology.graph[idx].id)
     }
 
     delegate::delegate! {

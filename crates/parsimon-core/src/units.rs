@@ -60,6 +60,36 @@ impl std::fmt::Display for Gbps {
     }
 }
 
+unit!(BitsPerSec);
+
+impl std::fmt::Display for BitsPerSec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}bps", self.0)
+    }
+}
+
+impl From<Gbps> for BitsPerSec {
+    fn from(val: Gbps) -> Self {
+        Self::new(val.0 * 1_000_000_000)
+    }
+}
+
+unit!(Secs);
+
+impl std::fmt::Display for Secs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}s", self.0)
+    }
+}
+
+unit!(Millisecs);
+
+impl std::fmt::Display for Millisecs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}ms", self.0)
+    }
+}
+
 unit!(Microsecs);
 
 impl std::fmt::Display for Microsecs {
@@ -73,6 +103,18 @@ unit!(Nanosecs);
 impl std::fmt::Display for Nanosecs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}ns", self.0)
+    }
+}
+
+impl From<Secs> for Nanosecs {
+    fn from(s: Secs) -> Self {
+        Self::new(s.0 * 1_000_000_000)
+    }
+}
+
+impl From<Millisecs> for Nanosecs {
+    fn from(ms: Millisecs) -> Self {
+        Self::new(ms.0 * 1_000_000)
     }
 }
 
