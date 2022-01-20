@@ -4,6 +4,7 @@ pub mod types;
 
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use petgraph::graph::NodeIndex;
 use rand::prelude::*;
 use rayon::prelude::*;
@@ -43,35 +44,34 @@ impl Network {
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`, and there must be a path between them.
-    pub fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
-        flows.sort_by_key(|f| f.start);
+    /// POSTCONDITION: The flows populating each link will be sorted by start time.
+    pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork {
         let mut topology = Topology::new_traced(&self.topology);
-        let (s, r) = crossbeam_channel::unbounded();
-        let nr_cpus = num_cpus::get();
-        let nr_flows = flows.len();
-        let chunk_size = std::cmp::max(nr_flows / nr_cpus, 1);
-        flows
-            .chunks(chunk_size)
-            .par_bridge()
-            .for_each_with(s, |s, flows| {
-                let mut assignments = Vec::new();
-                for &Flow { id, src, dst, .. } in flows {
-                    let hash = utils::calculate_hash(&id);
-                    let path = self.edge_indices_between(src, dst, |choices| {
-                        assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
-                        let idx = hash as usize % choices.len();
-                        Some(&choices[idx])
-                    });
-                    for eidx in path {
-                        assignments.push((eidx, id));
-                    }
+        let assignments = utils::par_chunks(&flows, |flows| {
+            let mut assignments = Vec::new();
+            for &Flow {
+                id,
+                src,
+                dst,
+                start,
+                ..
+            } in flows
+            {
+                let hash = utils::calculate_hash(&id);
+                let path = self.edge_indices_between(src, dst, |choices| {
+                    assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
+                    let idx = hash as usize % choices.len();
+                    Some(&choices[idx])
+                });
+                for eidx in path {
+                    assignments.push((eidx, id, start));
                 }
-                s.send(assignments).unwrap();
-            });
-        for (eidx, id) in r.into_iter().map(|v| v.into_iter()).flatten() {
+            }
+            assignments
+        });
+        for (eidx, id, _) in assignments.sorted_by_key(|&(_, _, start)| start) {
             topology.graph[eidx].push_flow(id);
         }
-
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
         let clusters = topology
@@ -193,6 +193,7 @@ impl SimNetwork {
         Ok(r.iter().collect())
     }
 
+    // POSTCONDITION: returned flows are sorted by start time
     pub fn flows_on(&self, edge: EdgeIndex) -> Option<Vec<Flow>> {
         self.edge(edge).map(|chan| {
             chan.flow_ids()

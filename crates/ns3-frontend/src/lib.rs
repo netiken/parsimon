@@ -21,6 +21,7 @@ pub struct Ns3Simulation {
     links: Vec<Link>,
     window: Bytes,
     base_rtt: Nanosecs,
+    // PRECONDITION: `flows` must be sorted by start time
     flows: Vec<Flow>,
 }
 

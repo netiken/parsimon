@@ -3,6 +3,8 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+use rayon::prelude::*;
+
 use crate::network::Flow;
 use crate::units::{Bytes, Gbps, Nanosecs};
 
@@ -47,6 +49,25 @@ pub(crate) fn offered_loads(
         push_load(&mut count, &mut next);
     }
     loads
+}
+
+pub(crate) fn par_chunks<T, F, R>(data: &[T], f: F) -> impl Iterator<Item = R>
+where
+    T: Sync,
+    R: Send,
+    F: Fn(&[T]) -> Vec<R> + Sync,
+{
+    let (s, r) = crossbeam_channel::unbounded();
+    let nr_cpus = num_cpus::get();
+    let nr_elems = data.len();
+    let chunk_size = std::cmp::max(nr_elems / nr_cpus, 1);
+    data.chunks(chunk_size)
+        .par_bridge()
+        .for_each_with(s, |s, chunk| {
+            let v = f(chunk);
+            s.send(v).unwrap(); // channel will not become disconnected
+        });
+    r.into_iter().map(|v| v.into_iter()).flatten()
 }
 
 #[cfg(test)]

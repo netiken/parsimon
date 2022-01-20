@@ -5,11 +5,13 @@ use petgraph::{
     graph::NodeIndex,
     visit::{VisitMap, Visitable},
 };
-use rayon::prelude::*;
 
-use crate::network::{
-    topology::Topology,
-    types::{BasicChannel, NodeId, NodeKind},
+use crate::{
+    network::{
+        topology::Topology,
+        types::{BasicChannel, NodeId, NodeKind},
+    },
+    utils,
 };
 
 // type HopMatrix = FxHashMap<NodeId, HopMap>;
@@ -28,50 +30,43 @@ impl Routes {
         let g = &topology.graph;
 
         // Each node is the starting point for a BFS. Do do chunks of these in parallel.
-        let (s, r) = crossbeam_channel::unbounded();
-        let nr_cpus = num_cpus::get();
         let node_indices = g.node_indices().collect::<Vec<_>>();
-        let nr_nodes = node_indices.len();
-        let chunk_size = std::cmp::max(nr_nodes / nr_cpus, 1);
-        node_indices
-            .chunks(chunk_size)
-            .par_bridge()
-            .for_each_with(s, |s, indices| {
-                let mut hops = Vec::new();
-                for &start in indices {
-                    let mut discovered = g.visit_map();
-                    discovered.visit(start);
+        let entries = utils::par_chunks(&node_indices, |indices| {
+            let mut entries = Vec::new();
+            for &start in indices {
+                let mut discovered = g.visit_map();
+                discovered.visit(start);
 
-                    let mut queue = VecDeque::new();
-                    queue.push_back(start);
+                let mut queue = VecDeque::new();
+                queue.push_back(start);
 
-                    let mut distances: FxHashMap<NodeIndex, usize> =
-                        [(start, 0)].into_iter().collect();
+                let mut distances: FxHashMap<NodeIndex, usize> = [(start, 0)].into_iter().collect();
 
-                    while let Some(n) = queue.pop_front() {
-                        let cur_distance = *distances.get(&n).unwrap();
-                        for succ in g.neighbors(n) {
-                            if discovered.visit(succ) {
-                                distances.insert(succ, cur_distance + 1);
-                                if matches!(g[succ].kind, NodeKind::Switch) {
-                                    queue.push_back(succ);
-                                }
+                while let Some(n) = queue.pop_front() {
+                    let cur_distance = *distances.get(&n).unwrap();
+                    for succ in g.neighbors(n) {
+                        if discovered.visit(succ) {
+                            distances.insert(succ, cur_distance + 1);
+                            if matches!(g[succ].kind, NodeKind::Switch) {
+                                queue.push_back(succ);
                             }
-                            // In this function, we do not assume `NodeId`s and `NodeIndex`s are exactly
-                            // the same, but it may be enforced elsewhere
-                            if *distances.get(&succ).unwrap() == cur_distance + 1 {
-                                // You can get from `succ` to `start` through `n`
-                                hops.push((g[succ].id, g[start].id, g[n].id))
-                            }
+                        }
+                        // In this function, we do not assume `NodeId`s and `NodeIndex`s are exactly
+                        // the same, but it may be enforced elsewhere
+                        if *distances.get(&succ).unwrap() == cur_distance + 1 {
+                            // You can get from `succ` to `start` through `n`
+                            entries.push((g[succ].id, g[start].id, g[n].id))
                         }
                     }
                 }
-                s.send(hops).unwrap();
-            });
+            }
+            entries
+        });
 
         // Merge the results into a single collection
+        let nr_nodes = node_indices.len();
         let mut hops = vec![vec![Vec::new(); nr_nodes]; nr_nodes];
-        for (a, b, c) in r.into_iter().map(|v| v.into_iter()).flatten() {
+        for (a, b, c) in entries {
             hops[a.inner()][b.inner()].push(c);
         }
 
