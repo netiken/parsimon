@@ -42,7 +42,7 @@ impl LinkSim for Ns3Link {
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
         let mut flows = network.flows_on(edge).unwrap(); // we already know the channel exists
 
-        // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectfully
+        // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectively
         let (srcs, dsts): (HashSet<_>, HashSet<_>) = flows.iter().map(|f| (f.src, f.dst)).unzip();
         let (bsrc, bdst) = (chan.src(), chan.dst());
 

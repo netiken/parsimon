@@ -69,6 +69,7 @@ impl Network {
             }
             assignments
         });
+        // POSTCONDITION: The flows populating each link will be sorted by start time.
         for (eidx, id, _) in assignments.sorted_by_key(|&(_, _, start)| start) {
             topology.graph[eidx].push_flow(id);
         }
