@@ -26,7 +26,10 @@ where
             let mut members = [representative].into_iter().collect::<HashSet<_>>();
             // Check all other unclustered edges to see if they're within epsilon of the current
             // representative.
+            let mut nr_ticks = 0;
             while let Some(&mut candidate) = cursor.current() {
+                nr_ticks += 1;
+                println!("nr_ticks = {nr_ticks}");
                 let cflows = network.flows_on(candidate).unwrap();
                 if (self.distance)(&rflows, &cflows) <= self.epsilon {
                     members.insert(candidate);
@@ -40,6 +43,7 @@ where
             cursor.move_next();
             // We're done with this cluster.
             clusters.push(Cluster::new(representative, members));
+            println!("{}", clusters.len());
         }
         clusters
     }
