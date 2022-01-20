@@ -46,17 +46,32 @@ impl Network {
     pub fn into_simulations(self, mut flows: Vec<Flow>) -> SimNetwork {
         flows.sort_by_key(|f| f.start);
         let mut topology = Topology::new_traced(&self.topology);
-        for &Flow { id, src, dst, .. } in &flows {
-            let hash = utils::calculate_hash(&id);
-            let path = self.edge_indices_between(src, dst, |choices| {
-                assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
-                let idx = hash as usize % choices.len();
-                Some(&choices[idx])
+        let (s, r) = crossbeam_channel::unbounded();
+        let nr_cpus = num_cpus::get();
+        let nr_flows = flows.len();
+        let chunk_size = std::cmp::max(nr_flows / nr_cpus, 1);
+        flows
+            .chunks(chunk_size)
+            .par_bridge()
+            .for_each_with(s, |s, flows| {
+                let mut assignments = Vec::new();
+                for &Flow { id, src, dst, .. } in flows {
+                    let hash = utils::calculate_hash(&id);
+                    let path = self.edge_indices_between(src, dst, |choices| {
+                        assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
+                        let idx = hash as usize % choices.len();
+                        Some(&choices[idx])
+                    });
+                    for eidx in path {
+                        assignments.push((eidx, id));
+                    }
+                }
+                s.send(assignments).unwrap();
             });
-            for eidx in path {
-                topology.graph[eidx].push_flow(id);
-            }
+        for (eidx, id) in r.into_iter().map(|v| v.into_iter()).flatten() {
+            topology.graph[eidx].push_flow(id);
         }
+
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
         let clusters = topology
@@ -66,7 +81,7 @@ impl Network {
             .collect();
         SimNetwork {
             topology,
-            routes: self.routes.clone(),
+            routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
         }
@@ -156,7 +171,7 @@ impl SimNetwork {
         }
         Ok(DelayNetwork {
             topology,
-            routes: self.routes.clone(),
+            routes: self.routes,
         })
     }
 

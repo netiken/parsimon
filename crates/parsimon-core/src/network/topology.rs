@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
-
 use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::network::types::{BasicChannel, FlowChannel, Link, Node, NodeId, NodeKind};
 
@@ -10,7 +9,7 @@ use super::types::EDistChannel;
 #[derive(Debug, Clone)]
 pub(crate) struct Topology<C: Clone> {
     pub(crate) graph: DiGraph<Node, C>,
-    pub(crate) id2idx: HashMap<NodeId, NodeIndex>,
+    pub(crate) id2idx: FxHashMap<NodeId, NodeIndex>,
     pub(crate) links: Vec<Link>,
 }
 
@@ -45,7 +44,7 @@ impl Topology<BasicChannel> {
     /// - Every host node should only have one link.
     pub(crate) fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let mut g = DiGraph::new();
-        let mut id2idx = HashMap::new();
+        let mut id2idx = FxHashMap::default();
         for (i, n) in nodes.iter().cloned().sorted_by_key(|n| n.id).enumerate() {
             let id = n.id;
             let idx = g.add_node(n);
@@ -59,7 +58,7 @@ impl Topology<BasicChannel> {
             }
         }
         let idx_of = |id| *id2idx.get(&id).unwrap();
-        let mut referenced_nodes = HashSet::new();
+        let mut referenced_nodes = FxHashSet::default();
         for Link {
             a,
             b,
