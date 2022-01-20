@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 
 use crate::network::types::{BasicChannel, FlowChannel, Link, Node, NodeId, NodeKind};
@@ -37,6 +38,7 @@ impl Topology<BasicChannel> {
     /// Correctness properties:
     ///
     /// - Every node must have a unique ID.
+    /// - Node IDs must be contiguous.
     /// - Every link must have distinct endpoints in `nodes`.
     /// - Every node must be referenced by some link.
     /// - For any two nodes, there must be at most one link between them.
@@ -44,11 +46,16 @@ impl Topology<BasicChannel> {
     pub(crate) fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let mut g = DiGraph::new();
         let mut id2idx = HashMap::new();
-        for n @ Node { id, .. } in nodes.iter().cloned() {
+        for (i, n) in nodes.iter().cloned().sorted_by_key(|n| n.id).enumerate() {
+            let id = n.id;
             let idx = g.add_node(n);
             if id2idx.insert(id, idx).is_some() {
                 // CORRECTNESS: Every node must have a unique ID.
                 return Err(TopologyError::DuplicateNodeId(id));
+            }
+            if id.inner() != i {
+                // CORRECTNESS: Node IDs must be contiguous.
+                return Err(TopologyError::HoleBeforeId(id));
             }
         }
         let idx_of = |id| *id2idx.get(&id).unwrap();
@@ -160,22 +167,25 @@ impl Topology<EDistChannel> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TopologyError {
-    #[error("Duplicate node ID {0}")]
+    #[error("duplicate node ID {0}")]
     DuplicateNodeId(NodeId),
 
-    #[error("Node {0} is connected to itself")]
+    #[error("node IDs not contiguous; hole before {0}")]
+    HoleBeforeId(NodeId),
+
+    #[error("node {0} is connected to itself")]
     NodeAdjacentSelf(NodeId),
 
-    #[error("Node {0} is not declared")]
+    #[error("node {0} is not declared")]
     UndeclaredNode(NodeId),
 
-    #[error("Duplicate links between {n1} and {n2}")]
+    #[error("duplicate links between {n1} and {n2}")]
     DuplicateLink { n1: NodeId, n2: NodeId },
 
-    #[error("Host {id} has too many links (expected 1, got {n})")]
+    #[error("host {id} has too many links (expected 1, got {n})")]
     TooManyHostLinks { id: NodeId, n: usize },
 
-    #[error("Node {0} is not connected to any other node")]
+    #[error("node {0} is not connected to any other node")]
     IsolatedNode(NodeId),
 }
 
@@ -221,6 +231,17 @@ mod tests {
         let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::DuplicateNodeId(..))));
+    }
+
+    #[test]
+    fn non_contiguous_node_ids_fails() {
+        let n1 = Node::new_host(NodeId::new(0));
+        let n2 = Node::new_host(NodeId::new(1));
+        let n3 = Node::new_switch(NodeId::new(3)); // error
+        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
+        assert!(matches!(res, Err(TopologyError::HoleBeforeId(..))));
     }
 
     #[test]
