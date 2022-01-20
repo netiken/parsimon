@@ -27,7 +27,7 @@ impl Routes {
     pub(super) fn new(topology: &Topology<BasicChannel>) -> Self {
         let g = &topology.graph;
 
-        // Each node is the starting point for a BFS
+        // Each node is the starting point for a BFS. Do do chunks of these in parallel.
         let (s, r) = crossbeam_channel::unbounded();
         let nr_cpus = num_cpus::get();
         let node_indices = g.node_indices().collect::<Vec<_>>();
@@ -60,6 +60,7 @@ impl Routes {
                             // In this function, we do not assume `NodeId`s and `NodeIndex`s are exactly
                             // the same, but it may be enforced elsewhere
                             if *distances.get(&succ).unwrap() == cur_distance + 1 {
+                                // You can get from `succ` to `start` through `n`
                                 hops.push((g[succ].id, g[start].id, g[n].id))
                             }
                         }
