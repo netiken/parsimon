@@ -1,50 +1,80 @@
-use std::collections::{HashSet, LinkedList};
+use std::collections::HashSet;
 
+use dashmap::DashMap;
 use parsimon_core::{
     cluster::{Cluster, ClusteringAlgo},
-    network::{Flow, SimNetwork},
+    network::{EdgeIndex, Flow, SimNetwork},
 };
+use rayon::prelude::*;
+use rustc_hash::FxHashSet;
 
 #[derive(Debug, derive_new::new)]
-pub struct GreedyClustering<R, D> {
-    epsilon: R,
+pub struct GreedyClustering<E, F, D> {
+    epsilon: E,
+    feature: F,
     distance: D,
 }
 
-impl<R, D> ClusteringAlgo for GreedyClustering<R, D>
+impl<E, F, D, X> ClusteringAlgo for GreedyClustering<E, F, D>
 where
-    R: Clone + Copy + PartialOrd,
-    D: Fn(&[Flow], &[Flow]) -> R,
+    E: Clone + Copy + PartialOrd + Sync,
+    F: Fn(&[Flow]) -> X + Sync,
+    D: Fn(&X, &X) -> E + Sync,
+    X: Clone + Send + Sync,
 {
     fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
-        let mut unclustered_edges = network.edge_indices().collect::<LinkedList<_>>();
+        let features = Features::new(network, &self.feature);
+        let mut unclustered_edges = network.edge_indices().collect::<FxHashSet<_>>();
         let mut clusters = Vec::new();
         // Every time we remove an element, it becomes the next cluster representative.
-        let mut cursor = unclustered_edges.cursor_front_mut();
-        while let Some(representative) = cursor.remove_current() {
-            let rflows = network.flows_on(representative).unwrap();
+        while let Some(&representative) = unclustered_edges.iter().next() {
+            unclustered_edges.remove(&representative);
+            let rfeat = features.get(representative);
             let mut members = [representative].into_iter().collect::<HashSet<_>>();
             // Check all other unclustered edges to see if they're within epsilon of the current
             // representative.
-            let mut nr_ticks = 0;
-            while let Some(&mut candidate) = cursor.current() {
-                nr_ticks += 1;
-                println!("nr_ticks = {nr_ticks}");
-                let cflows = network.flows_on(candidate).unwrap();
-                if (self.distance)(&rflows, &cflows) <= self.epsilon {
-                    members.insert(candidate);
-                    cursor.remove_current();
-                } else {
-                    cursor.move_next();
-                }
+            let candidates = unclustered_edges
+                .par_iter()
+                .filter_map(|&candidate| {
+                    let cfeat = features.get(candidate);
+                    ((self.distance)(&rfeat, &cfeat) <= self.epsilon).then(|| candidate)
+                })
+                .collect::<Vec<_>>();
+            for candidate in candidates {
+                members.insert(candidate);
+                unclustered_edges.remove(&candidate);
             }
-            // Because of the above iteration, the cursor now points to the ghost element, so
-            // circle it back around.
-            cursor.move_next();
             // We're done with this cluster.
+            // println!("Cluster {} has {} members", clusters.len(), members.len());
             clusters.push(Cluster::new(representative, members));
-            println!("{}", clusters.len());
         }
         clusters
+    }
+}
+
+#[derive(derive_new::new)]
+struct Features<'a, F, X> {
+    network: &'a SimNetwork,
+    feature: F,
+    #[new(default)]
+    cache: DashMap<EdgeIndex, X>,
+}
+
+impl<'a, F, X> Features<'a, F, X>
+where
+    F: Fn(&[Flow]) -> X + Sync,
+    X: Clone + Send + Sync,
+{
+    fn get(&self, eidx: EdgeIndex) -> X {
+        self.cache
+            .entry(eidx)
+            .or_insert_with(|| {
+                let flows = self
+                    .network
+                    .flows_on(eidx)
+                    .expect("invalid `eidx` in `Features::get`");
+                (self.feature)(&flows)
+            })
+            .clone()
     }
 }
