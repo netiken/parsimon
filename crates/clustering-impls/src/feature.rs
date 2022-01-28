@@ -6,7 +6,7 @@ use parsimon_core::{
 use crate::utils;
 
 pub fn sz_arr_percentiles(flows: &[Flow]) -> Option<(Vec<Bytes>, Vec<Nanosecs>)> {
-    (flows.len() >= 1000).then(|| {
+    (flows.len() >= 2).then(|| {
         let sz = utils::percentiles(flows, |f| f.size);
         let arr = utils::percentiles(&utils::deltas(flows), |&x| x);
         (sz, arr)
