@@ -184,10 +184,15 @@ impl SimNetwork {
         S: LinkSim + Sync,
     {
         let (s, r) = crossbeam_channel::unbounded();
-        // Simulate all clusters in parallel.
+        // Simulate all cluster representatives in parallel.
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
-            let data = sim.simulate(self, edge)?;
+            let chan = self.edge(edge).unwrap();
+            let data = if chan.nr_flows() > 0 {
+                sim.simulate(self, edge)?
+            } else {
+                Vec::new()
+            };
             s.send((edge, data)).unwrap(); // the channel should never become disconnected
             Result::<(), SimNetworkError>::Ok(())
         })?;
