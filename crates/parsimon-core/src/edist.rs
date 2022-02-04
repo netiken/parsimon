@@ -34,6 +34,10 @@ impl EDistBuckets {
         Ok(())
     }
 
+    pub fn bucket_ranges(&self) -> impl Iterator<Item = &Range<Bytes>> {
+        self.inner.iter().map(|(range, _)| range)
+    }
+
     pub fn for_size(&self, size: Bytes) -> Option<&EDist> {
         self.inner
             .iter()

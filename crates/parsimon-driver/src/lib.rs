@@ -52,6 +52,16 @@ pub fn read_network(network_spec: impl AsRef<Path>) -> Result<Network, Error> {
     Ok(Network::new(&spec.nodes, &spec.links)?)
 }
 
+pub fn read_topology_spec(path: impl AsRef<Path>) -> Result<TopologySpec, Error> {
+    let contents = std::fs::read_to_string(path.as_ref())?;
+    let network: TopologySpec = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
+        Some("json") => serde_json::from_str(&contents)?,
+        Some("dhall") => serde_dhall::from_str(&contents).parse()?,
+        _ => return Err(Error::UnknownFileType(path.as_ref().into())),
+    };
+    Ok(network)
+}
+
 pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
     let contents = std::fs::read_to_string(path.as_ref())?;
     let flows: Vec<Flow> = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
@@ -87,6 +97,12 @@ pub struct NetworkSpec {
     pub nodes: Vec<Node>,
     pub links: Vec<Link>,
     pub linksim: LinkSimKind,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TopologySpec {
+    pub nodes: Vec<Node>,
+    pub links: Vec<Link>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
