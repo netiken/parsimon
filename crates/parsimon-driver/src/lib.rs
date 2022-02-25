@@ -47,8 +47,8 @@ pub fn read_network_spec(path: impl AsRef<Path>) -> Result<NetworkSpec, Error> {
     Ok(network)
 }
 
-pub fn read_network(network_spec: impl AsRef<Path>) -> Result<Network, Error> {
-    let spec = read_network_spec(network_spec)?;
+pub fn read_network(topology_spec: impl AsRef<Path>) -> Result<Network, Error> {
+    let spec = read_topology_spec(topology_spec)?;
     Ok(Network::new(&spec.nodes, &spec.links)?)
 }
 

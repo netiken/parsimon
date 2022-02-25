@@ -10,7 +10,7 @@ use parsimon_core::{
         types::{Link, Node},
         Channel, EdgeIndex, NodeId, SimNetwork,
     },
-    units::{Bytes, Gbps, Nanosecs},
+    units::{Bytes, Nanosecs},
 };
 
 #[derive(Debug)]
@@ -68,7 +68,7 @@ impl LinkSim for Ns3Link {
                 // CORRECTNESS: assumes all paths from `src` to `bsrc` have the same min bandwidth
                 // and delay
                 let path = network.path(src, bsrc, |choices| choices.first());
-                let bandwidth = Gbps::new(1000);
+                let bandwidth = path.bandwidths().min().unwrap().scale_by(1.0);
                 let delay = path.delay();
                 let link = Link::new(src, bsrc, bandwidth, delay);
                 links.push(link);
@@ -83,7 +83,7 @@ impl LinkSim for Ns3Link {
                 // CORRECTNESS: assumes all paths from `bdst` to `dst` have the same min bandwidth
                 // and delay
                 let path = network.path(bdst, dst, |choices| choices.first());
-                let bandwidth = Gbps::new(1000);
+                let bandwidth = path.bandwidths().min().unwrap().scale_by(10.0);
                 let delay = path.delay();
                 let link = Link::new(bdst, dst, bandwidth, delay);
                 links.push(link);

@@ -45,7 +45,6 @@ where
                 unclustered_edges.remove(&candidate);
             }
             // We're done with this cluster.
-            // println!("Cluster {} has {} members", clusters.len(), members.len());
             clusters.push(Cluster::new(representative, members));
         }
         clusters
