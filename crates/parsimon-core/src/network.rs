@@ -305,14 +305,14 @@ impl DelayNetwork {
             .iter()
             .map(|&e| {
                 let chan = &self.topology.graph[e];
-                chan.dists.for_size(size).map(|dist| {
-                    let pktnorm_delay = dist.sample(&mut rng);
-                    let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
-                    let delay = nr_pkts * pktnorm_delay;
-                    Nanosecs::new(delay as u64)
-                })
+                chan.dists.for_size(size).map(|dist| dist.sample(&mut rng))
             })
-            .sum()
+            .sum::<Option<f64>>()
+            .map(|pktnorm_delay| {
+                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let delay = nr_pkts * pktnorm_delay;
+                Nanosecs::new(delay as u64)
+            })
     }
 
     delegate::delegate! {

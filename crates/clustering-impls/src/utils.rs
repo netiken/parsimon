@@ -56,7 +56,7 @@ where
         .zip(b.iter())
         .map(|(&x, &y)| (x.into() - y.into()).abs())
         .sum::<f64>()
-        / a.iter().map(|&x| Into::<f64>::into(x)).sum::<f64>()
+        / a.iter().map(|&x| Into::<f64>::into(x).abs()).sum::<f64>()
 }
 
 // Mean absolute error

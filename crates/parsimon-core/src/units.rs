@@ -60,6 +60,14 @@ impl std::fmt::Display for Gbps {
     }
 }
 
+unit!(Mbps);
+
+impl std::fmt::Display for Mbps {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}Mbps", self.0)
+    }
+}
+
 unit!(BitsPerSec);
 
 impl std::fmt::Display for BitsPerSec {
@@ -71,6 +79,12 @@ impl std::fmt::Display for BitsPerSec {
 impl From<Gbps> for BitsPerSec {
     fn from(val: Gbps) -> Self {
         Self::new(val.0 * 1_000_000_000)
+    }
+}
+
+impl From<Mbps> for BitsPerSec {
+    fn from(val: Mbps) -> Self {
+        Self::new(val.0 * 1_000_000)
     }
 }
 
