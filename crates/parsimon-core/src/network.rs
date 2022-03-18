@@ -207,6 +207,12 @@ impl SimNetwork {
             .map(|&idx| &self.topology.graph[idx])
     }
 
+    pub fn find_edge(&self, a: NodeId, b: NodeId) -> Option<EdgeIndex> {
+        let a = *self.topology.idx_of(&a)?;
+        let b = *self.topology.idx_of(&b)?;
+        self.topology.graph.find_edge(a, b)
+    }
+
     /// Get a reference to the sim network's clusters.
     pub fn clusters(&self) -> &[Cluster] {
         self.clusters.as_ref()

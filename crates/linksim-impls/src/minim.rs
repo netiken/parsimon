@@ -5,6 +5,8 @@ use parsimon_core::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::utils;
+
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct MinimLink {
     #[builder(setter(into))]
@@ -18,6 +20,9 @@ impl LinkSim for MinimLink {
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
         let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
+
+        let ack_rate = utils::ack_rate(network, edge);
+        eprintln!("ack_rate = {:?}", ack_rate);
 
         let srcs = flows.iter().map(|f| f.src).collect::<FxHashSet<_>>();
         let (bsrc, bdst) = (chan.src(), chan.dst());
