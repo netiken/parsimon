@@ -49,14 +49,7 @@ impl Network {
         let mut topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
-            for &Flow {
-                id,
-                src,
-                dst,
-                start,
-                ..
-            } in flows
-            {
+            for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
                 let path = self.edge_indices_between(src, dst, |choices| {
                     assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
@@ -64,14 +57,14 @@ impl Network {
                     Some(&choices[idx])
                 });
                 for eidx in path {
-                    assignments.push((eidx, id, start));
+                    assignments.push((eidx, f));
                 }
             }
             assignments
         });
         // POSTCONDITION: The flows populating each link will be sorted by start time.
-        for (eidx, id, _) in assignments.sorted_by_key(|&(_, _, start)| start) {
-            topology.graph[eidx].push_flow(id);
+        for (eidx, flow) in assignments.sorted_by_key(|&(_, flow)| flow.start) {
+            topology.graph[eidx].push_flow(&flow);
         }
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.

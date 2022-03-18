@@ -64,7 +64,7 @@ impl Ns3Simulation {
         let window = self.window.into_u64().to_string();
         let base_rtt = self.base_rtt.into_u64().to_string();
         let extra_args = &[
-            "--topo", "topology", "--trace", "flows", "--bw", "100", "--cc", "dctcp",
+            "--topo", "topology", "--trace", "flows", "--bw", "10", "--cc", "dctcp",
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};

@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use ns3_frontend::Ns3Simulation;
 use parsimon_core::{
@@ -12,6 +9,7 @@ use parsimon_core::{
     },
     units::{Bytes, Nanosecs},
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug)]
 pub struct Ns3Link {
@@ -43,7 +41,8 @@ impl LinkSim for Ns3Link {
         let mut flows = network.flows_on(edge).unwrap(); // we already know the channel exists
 
         // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectively
-        let (srcs, dsts): (HashSet<_>, HashSet<_>) = flows.iter().map(|f| (f.src, f.dst)).unzip();
+        let (srcs, dsts): (FxHashSet<_>, FxHashSet<_>) =
+            flows.iter().map(|f| (f.src, f.dst)).unzip();
         let (bsrc, bdst) = (chan.src(), chan.dst());
 
         assert!(srcs.intersection(&dsts).count() == 0);
@@ -51,7 +50,7 @@ impl LinkSim for Ns3Link {
             .iter()
             .chain(dsts.iter())
             .chain([&bsrc, &bdst].into_iter())
-            .collect::<HashSet<_>>();
+            .collect::<FxHashSet<_>>();
         let mut nodes = nodes
             .into_iter()
             .map(|&id| network.node(id).unwrap())
@@ -59,14 +58,14 @@ impl LinkSim for Ns3Link {
             .collect::<Vec<Node>>();
 
         let mut links = Vec::new();
-        // Connect sources to the bottleneck with fat links. If `bsrc` is in `srcs`, then the
+        // Connect sources to the bottleneck. If `bsrc` is in `srcs`, then the
         // bottleneck channel is assumed to be a host-ToR up-channel.
         if srcs.contains(&bsrc) {
             assert!(srcs.len() == 1);
         } else {
             for src in srcs {
-                // CORRECTNESS: assumes all paths from `src` to `bsrc` have the same min bandwidth
-                // and delay
+                // CORRECTNESS: assumes all paths from `src` to `bsrc` have the
+                // same min bandwidth and delay
                 let path = network.path(src, bsrc, |choices| choices.first());
                 let bandwidth = path.bandwidths().min().unwrap().scale_by(1.0);
                 let delay = path.delay();
@@ -74,14 +73,15 @@ impl LinkSim for Ns3Link {
                 links.push(link);
             }
         }
-        // Connect the bottleneck to destinations with fat links. If `bdst` is in `dsts`, then the
-        // bottleneck channel is assumed to be a ToR-host down-channel.
+        // Connect the bottleneck to destinations with _fat links_. If `bdst`
+        // is in `dsts`, then the bottleneck channel is assumed to be a
+        // ToR-host down-channel.
         if dsts.contains(&bdst) {
             assert!(dsts.len() == 1);
         } else {
             for dst in dsts {
-                // CORRECTNESS: assumes all paths from `bdst` to `dst` have the same min bandwidth
-                // and delay
+                // CORRECTNESS: assumes all paths from `bdst` to `dst` have the
+                // same min bandwidth and delay
                 let path = network.path(bdst, dst, |choices| choices.first());
                 let bandwidth = path.bandwidths().min().unwrap().scale_by(10.0);
                 let delay = path.delay();
@@ -98,7 +98,7 @@ impl LinkSim for Ns3Link {
             .iter()
             .enumerate()
             .map(|(i, n)| (n.id, NodeId::new(i)))
-            .collect::<HashMap<_, _>>();
+            .collect::<FxHashMap<_, _>>();
         for node in nodes.iter_mut() {
             node.id = *old2new.get(&node.id).unwrap();
         }

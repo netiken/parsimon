@@ -146,6 +146,14 @@ impl std::fmt::Display for Gigabytes {
     }
 }
 
+unit!(Kilobytes);
+
+impl std::fmt::Display for Kilobytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}KB", self.0)
+    }
+}
+
 unit!(Bytes);
 
 impl std::fmt::Display for Bytes {
@@ -157,5 +165,11 @@ impl std::fmt::Display for Bytes {
 impl From<Gigabytes> for Bytes {
     fn from(gb: Gigabytes) -> Self {
         Bytes::new(gb.0 * 1_000_000_000)
+    }
+}
+
+impl From<Kilobytes> for Bytes {
+    fn from(kb: Kilobytes) -> Self {
+        Bytes::new(kb.0 * 1_000)
     }
 }
