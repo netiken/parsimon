@@ -380,7 +380,7 @@ trait TraversableNetwork<C: Clone + Channel> {
     ) -> Path<C> {
         let channels = self
             .edge_indices_between(src, dst, choose)
-            .map(|eidx| &self.topology().graph[eidx])
+            .map(|eidx| (eidx, &self.topology().graph[eidx]))
             .collect();
         Path::new(channels)
     }

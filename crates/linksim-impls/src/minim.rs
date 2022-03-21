@@ -21,28 +21,27 @@ impl LinkSim for MinimLink {
         let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
         let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
 
-        let ack_rate = utils::ack_rate(network, edge);
-        eprintln!("ack_rate = {:?}", ack_rate);
-
-        let srcs = flows.iter().map(|f| f.src).collect::<FxHashSet<_>>();
+        let src_map = flows.iter().map(|f| f.src).collect::<FxHashSet<_>>();
         let (bsrc, bdst) = (chan.src(), chan.dst());
 
-        let srcs = srcs
-            .into_iter()
-            .map(|src| {
+        let srcs = src_map
+            .iter()
+            .map(|&src| {
                 let (delay2btl, link_rate) = if src == bsrc {
                     let path = network.path(src, bdst, |c| c.first());
-                    let link_rate = path.bandwidths().next().unwrap();
+                    let &(eidx, chan) = path.iter().next().unwrap();
+                    let link_rate = chan.bandwidth() - utils::ack_rate(network, eidx);
                     (Nanosecs::ZERO, link_rate)
                 } else {
                     let path = network.path(src, bsrc, |c| c.first());
-                    let link_rate = path.bandwidths().next().unwrap();
+                    let &(eidx, chan) = path.iter().next().unwrap();
+                    let link_rate = chan.bandwidth() - utils::ack_rate(network, eidx);
                     (path.delay(), link_rate)
                 };
                 minim::SourceDesc::builder()
                     .id(minim::SourceId::new(src.inner()))
                     .delay2btl(minim::units::Nanosecs::new(delay2btl.into_u64()))
-                    .link_rate(minim::units::Gbps::new(link_rate.into_u64()))
+                    .link_rate(minim::units::BitsPerSec::new(link_rate.into_u64()))
                     .build()
             })
             .collect::<Vec<_>>();
@@ -69,9 +68,19 @@ impl LinkSim for MinimLink {
             })
             .collect::<Vec<_>>();
 
-        let marking_threshold = Kilobytes::new(chan.bandwidth().scale_by(3.0).into_u64());
+        let marking_threshold = Kilobytes::new(
+            chan.bandwidth()
+                .scale_by(1e9_f64.recip())
+                .scale_by(3_f64)
+                .into_u64(),
+        );
+        let bandwidth = if src_map.contains(&chan.src()) {
+            chan.bandwidth().scale_by(100_f64)
+        } else {
+            chan.bandwidth() - utils::ack_rate(network, edge)
+        };
         let cfg = minim::Config::builder()
-            .bandwidth(minim::units::Gbps::new(chan.bandwidth().into_u64()))
+            .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))
             .queue(minim::queue::FifoQ::new())
             .sources(srcs)
             .flows(flows)

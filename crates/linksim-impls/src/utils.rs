@@ -1,7 +1,6 @@
-use minim::units::BitsPerSec;
 use parsimon_core::{
     network::{Channel, EdgeIndex, SimNetwork},
-    units::{Bytes, Nanosecs},
+    units::{BitsPerSec, Bytes},
 };
 
 const PKTSIZE_MAX: Bytes = Bytes::new(1000);

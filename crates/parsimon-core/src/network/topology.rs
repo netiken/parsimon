@@ -194,7 +194,7 @@ mod tests {
 
     use super::*;
     use crate::testing;
-    use crate::units::{Gbps, Nanosecs};
+    use crate::units::{BitsPerSec, Nanosecs};
 
     #[test]
     fn empty_topology_succeeds() {
@@ -226,8 +226,8 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(0)); // error
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::DuplicateNodeId(..))));
     }
@@ -237,8 +237,8 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(3)); // error
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::HoleBeforeId(..))));
     }
@@ -248,9 +248,9 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l3 = Link::new(n3.id, n3.id, Gbps::default(), Nanosecs::default()); // error
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l3 = Link::new(n3.id, n3.id, BitsPerSec::default(), Nanosecs::default()); // error
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::NodeAdjacentSelf(..))));
     }
@@ -260,9 +260,14 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l3 = Link::new(NodeId::new(3), n3.id, Gbps::default(), Nanosecs::default());
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l3 = Link::new(
+            NodeId::new(3),
+            n3.id,
+            BitsPerSec::default(),
+            Nanosecs::default(),
+        );
         let res = Topology::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::UndeclaredNode(..))));
     }
@@ -272,9 +277,9 @@ mod tests {
         let n1 = Node::new_host(NodeId::new(0));
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l3 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default()); // error
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l3 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default()); // error
         let res = Topology::<BasicChannel>::new(&[n1, n2, n3], &[l1, l2, l3]);
         assert!(matches!(res, Err(TopologyError::DuplicateLink { .. })));
     }
@@ -285,9 +290,9 @@ mod tests {
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
         let n4 = Node::new_switch(NodeId::new(3));
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l3 = Link::new(n1.id, n4.id, Gbps::default(), Nanosecs::default()); // error
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l3 = Link::new(n1.id, n4.id, BitsPerSec::default(), Nanosecs::default()); // error
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2, l3]);
         assert!(matches!(
             res,
@@ -301,8 +306,8 @@ mod tests {
         let n2 = Node::new_host(NodeId::new(1));
         let n3 = Node::new_switch(NodeId::new(2));
         let n4 = Node::new_host(NodeId::new(3)); // error
-        let l1 = Link::new(n1.id, n3.id, Gbps::default(), Nanosecs::default());
-        let l2 = Link::new(n2.id, n3.id, Gbps::default(), Nanosecs::default());
+        let l1 = Link::new(n1.id, n3.id, BitsPerSec::default(), Nanosecs::default());
+        let l2 = Link::new(n2.id, n3.id, BitsPerSec::default(), Nanosecs::default());
         let res = Topology::new(&[n1, n2, n3, n4], &[l1, l2]);
         assert!(matches!(res, Err(TopologyError::IsolatedNode(..))));
     }
@@ -318,7 +323,7 @@ mod tests {
             assert_eq!(n1, n2);
         }
         for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
-            let e2 = &BasicChannel::new(e2.src, e2.dst, Gbps::new(100), Nanosecs::new(1000));
+            let e2 = &BasicChannel::new(e2.src, e2.dst, BitsPerSec::new(100_000_000_000), Nanosecs::new(1000));
             assert_eq!(e1, e2);
         }
         Ok(())

@@ -7,9 +7,11 @@ use parsimon_core::{
         types::{Link, Node},
         Channel, EdgeIndex, NodeId, SimNetwork,
     },
-    units::{Bytes, Nanosecs},
+    units::{BitsPerSec, Bytes, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::utils;
 
 #[derive(Debug)]
 pub struct Ns3Link {
@@ -67,7 +69,8 @@ impl LinkSim for Ns3Link {
                 // CORRECTNESS: assumes all paths from `src` to `bsrc` have the
                 // same min bandwidth and delay
                 let path = network.path(src, bsrc, |choices| choices.first());
-                let bandwidth = path.bandwidths().min().unwrap().scale_by(1.0);
+                let &(eidx, chan) = path.iter().next().unwrap();
+                let bandwidth = chan.bandwidth() - utils::ack_rate(network, eidx);
                 let delay = path.delay();
                 let link = Link::new(src, bsrc, bandwidth, delay);
                 links.push(link);
@@ -90,7 +93,8 @@ impl LinkSim for Ns3Link {
             }
         }
         // Now include the bottleneck channel
-        let bottleneck = Link::new(bsrc, bdst, chan.bandwidth(), chan.delay());
+        let bandwidth = chan.bandwidth() - utils::ack_rate(network, edge);
+        let bottleneck = Link::new(bsrc, bdst, bandwidth, chan.delay());
         links.push(bottleneck);
 
         // The last step is to re-assign node IDs so that they're contiguous.

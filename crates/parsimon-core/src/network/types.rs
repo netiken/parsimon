@@ -1,7 +1,9 @@
 use std::cmp::Ordering;
 
+use petgraph::graph::EdgeIndex;
+
 use crate::edist::EDistBuckets;
-use crate::units::{Bytes, Gbps, Nanosecs};
+use crate::units::{BitsPerSec, Bytes, Nanosecs};
 
 pub const PKTSIZE_MAX: Bytes = Bytes::new(1000);
 
@@ -36,15 +38,29 @@ pub enum NodeKind {
 identifier!(NodeId, usize);
 
 /// A bidirectional channel.
-#[derive(Debug, Clone, Copy, derive_new::new, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Link {
     pub a: NodeId,
     pub b: NodeId,
-    pub bandwidth: Gbps,
+    pub bandwidth: BitsPerSec,
     pub delay: Nanosecs,
 }
 
 impl Link {
+    pub fn new(
+        a: NodeId,
+        b: NodeId,
+        bandwidth: impl Into<BitsPerSec>,
+        delay: impl Into<Nanosecs>,
+    ) -> Self {
+        Self {
+            a,
+            b,
+            bandwidth: bandwidth.into(),
+            delay: delay.into(),
+        }
+    }
+
     pub fn connects(&self, x: NodeId, y: NodeId) -> bool {
         self.a == x && self.b == y || self.a == y && self.b == x
     }
@@ -55,7 +71,7 @@ pub trait Channel {
 
     fn dst(&self) -> NodeId;
 
-    fn bandwidth(&self) -> Gbps;
+    fn bandwidth(&self) -> BitsPerSec;
 
     fn delay(&self) -> Nanosecs;
 }
@@ -72,7 +88,7 @@ macro_rules! channel_impl {
                 self.dst
             }
 
-            fn bandwidth(&self) -> Gbps {
+            fn bandwidth(&self) -> BitsPerSec {
                 self.bandwidth
             }
 
@@ -87,7 +103,7 @@ macro_rules! channel_impl {
 pub(crate) struct BasicChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
-    pub(crate) bandwidth: Gbps,
+    pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
 }
 
@@ -97,7 +113,7 @@ channel_impl!(BasicChannel);
 pub struct FlowChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
-    pub(crate) bandwidth: Gbps,
+    pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
     pub(crate) flows: Vec<FlowId>,
     pub(crate) nr_total_bytes: Bytes,
@@ -144,7 +160,7 @@ impl FlowChannel {
 pub struct EDistChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
-    pub(crate) bandwidth: Gbps,
+    pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
     pub(crate) dists: EDistBuckets,
 }
@@ -165,20 +181,24 @@ channel_impl!(EDistChannel);
 
 #[derive(Debug)]
 pub struct Path<'a, C> {
-    inner: Vec<&'a C>,
+    inner: Vec<(EdgeIndex, &'a C)>,
 }
 
 impl<'a, C: Channel> Path<'a, C> {
-    pub fn new(channels: Vec<&'a C>) -> Self {
+    pub fn new(channels: Vec<(EdgeIndex, &'a C)>) -> Self {
         Self { inner: channels }
     }
 
     pub fn delay(&self) -> Nanosecs {
-        self.inner.iter().map(|&c| c.delay()).sum()
+        self.inner.iter().map(|&(_, c)| c.delay()).sum()
     }
 
-    pub fn bandwidths(&self) -> impl Iterator<Item = Gbps> + '_ {
-        self.inner.iter().map(|&c| c.bandwidth())
+    pub fn bandwidths(&self) -> impl Iterator<Item = BitsPerSec> + '_ {
+        self.inner.iter().map(|&(_, c)| c.bandwidth())
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(EdgeIndex, &'a C)> + '_ {
+        self.inner.iter()
     }
 }
 
