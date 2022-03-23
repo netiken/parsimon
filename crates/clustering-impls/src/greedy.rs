@@ -3,23 +3,21 @@ use std::collections::HashSet;
 use dashmap::DashMap;
 use parsimon_core::{
     cluster::{Cluster, ClusteringAlgo},
-    network::{EdgeIndex, Flow, SimNetwork},
+    network::{types::FlowChannel, EdgeIndex, Flow, SimNetwork},
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
 #[derive(Debug, derive_new::new)]
-pub struct GreedyClustering<E, F, D> {
-    epsilon: E,
+pub struct GreedyClustering<F, G> {
     feature: F,
-    distance: D,
+    is_close_enough: G,
 }
 
-impl<E, F, D, X> ClusteringAlgo for GreedyClustering<E, F, D>
+impl<F, G, X> ClusteringAlgo for GreedyClustering<F, G>
 where
-    E: Clone + Copy + PartialOrd + Sync,
-    F: Fn(&[Flow]) -> X + Sync,
-    D: Fn(&X, &X) -> E + Sync,
+    F: Fn(&FlowChannel, &[Flow]) -> X + Sync,
+    G: Fn(&X, &X) -> bool + Sync,
     X: Clone + Send + Sync,
 {
     fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
@@ -37,7 +35,7 @@ where
                 .par_iter()
                 .filter_map(|&candidate| {
                     let cfeat = features.get(candidate);
-                    ((self.distance)(&rfeat, &cfeat) <= self.epsilon).then(|| candidate)
+                    (self.is_close_enough)(&rfeat, &cfeat).then(|| candidate)
                 })
                 .collect::<Vec<_>>();
             for candidate in candidates {
@@ -61,18 +59,22 @@ struct Features<'a, F, X> {
 
 impl<'a, F, X> Features<'a, F, X>
 where
-    F: Fn(&[Flow]) -> X + Sync,
+    F: Fn(&FlowChannel, &[Flow]) -> X + Sync,
     X: Clone + Send + Sync,
 {
     fn get(&self, eidx: EdgeIndex) -> X {
         self.cache
             .entry(eidx)
             .or_insert_with(|| {
+                let chan = self
+                    .network
+                    .edge(eidx)
+                    .expect("invalid `eidx` in `Features::get`");
                 let flows = self
                     .network
                     .flows_on(eidx)
                     .expect("invalid `eidx` in `Features::get`");
-                (self.feature)(&flows)
+                (self.feature)(chan, &flows)
             })
             .clone()
     }

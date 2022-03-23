@@ -116,7 +116,6 @@ pub struct FlowChannel {
     pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
     pub(crate) flows: Vec<FlowId>,
-    pub(crate) nr_total_bytes: Bytes,
 }
 
 channel_impl!(FlowChannel);
@@ -129,7 +128,6 @@ impl FlowChannel {
             bandwidth: chan.bandwidth,
             delay: chan.delay,
             flows: Vec::new(),
-            nr_total_bytes: Bytes::ZERO,
         }
     }
 
@@ -138,12 +136,7 @@ impl FlowChannel {
         self.flows.iter().copied()
     }
 
-    pub fn nr_total_bytes(&self) -> Bytes {
-        self.nr_total_bytes
-    }
-
     pub(crate) fn push_flow(&mut self, flow: &Flow) {
-        self.nr_total_bytes += flow.size;
         self.flows.push(flow.id);
     }
 

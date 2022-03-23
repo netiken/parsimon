@@ -7,7 +7,7 @@ use parsimon_core::{
         types::{Link, Node},
         Channel, EdgeIndex, NodeId, SimNetwork,
     },
-    units::{BitsPerSec, Bytes, Nanosecs},
+    units::{Bytes, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
