@@ -17,7 +17,7 @@ use crate::{
     cluster::{Cluster, ClusteringAlgo},
     edist::EDistError,
     linksim::{LinkSim, LinkSimError},
-    units::{Bytes, Nanosecs},
+    units::{BitsPerSec, Bytes, Nanosecs},
     utils,
 };
 
@@ -232,6 +232,22 @@ impl SimNetwork {
         <Self as TraversableNetwork<FlowChannel>>::path(&self, src, dst, choose)
     }
 
+    pub fn utilization_of(&self, eidx: EdgeIndex) -> Option<f64> {
+        let chan = self.edge(eidx)?;
+        let flows = self.flows_on(eidx)?;
+        let nr_bytes = flows.iter().map(|f| f.size).sum::<Bytes>();
+        let duration = flows.last().map(|f| f.start).unwrap_or_default()
+            - flows.first().map(|f| f.start).unwrap_or_default();
+        (duration != Nanosecs::ZERO)
+            .then(|| {
+                assert!(chan.bandwidth() != BitsPerSec::ZERO);
+                let bps = nr_bytes.into_f64() * 8.0 * 1e9 / duration.into_f64();
+                let load = bps / chan.bandwidth().into_f64();
+                load
+            })
+            .or(Some(0.0))
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             #[call(node_weights)]
@@ -241,7 +257,7 @@ impl SimNetwork {
             pub fn edge(&self, idx: EdgeIndex) -> Option<&FlowChannel>;
 
             #[call(edge_weights)]
-            pub fn edges(&self) -> impl Iterator<Item = &FlowChannel>;
+            pub fn channels(&self) -> impl Iterator<Item = &FlowChannel>;
 
             pub fn edge_indices(&self) -> impl Iterator<Item = EdgeIndex>;
         }
