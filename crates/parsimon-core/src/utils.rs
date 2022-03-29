@@ -1,11 +1,12 @@
 #![allow(unused)]
 
+use std::cmp;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use rayon::prelude::*;
 
-use crate::network::Flow;
+use crate::network::{Channel, Flow};
 use crate::units::{Bytes, Gbps, Nanosecs};
 
 pub(crate) fn calculate_hash<T: Hash>(t: &T) -> u64 {
@@ -70,6 +71,38 @@ where
     r.into_iter().map(|v| v.into_iter()).flatten()
 }
 
+const SZ_PKTMAX: Bytes = Bytes::new(1_000);
+const SZ_HDR: Bytes = Bytes::new(48);
+
+pub(crate) fn ideal_fct<T>(size: Bytes, hops: &[T]) -> Nanosecs
+where
+    T: Channel,
+{
+    assert!(!hops.is_empty());
+    let bandwidths = hops.iter().map(|c| c.bandwidth()).collect::<Vec<_>>();
+    let min_bw = bandwidths.iter().min().unwrap();
+    let sz_head_ = cmp::min(SZ_PKTMAX, size);
+    let sz_head = (sz_head_ != Bytes::ZERO)
+        .then(|| sz_head_ + SZ_HDR)
+        .unwrap_or(Bytes::ZERO);
+    let sz_rest_ = size - sz_head_;
+    let head_delay = bandwidths
+        .iter()
+        .map(|bw| bw.length(sz_head))
+        .sum::<Nanosecs>();
+    let rest_delay = {
+        let nr_full_pkts = sz_rest_.into_usize() / SZ_PKTMAX.into_usize();
+        let sz_full_pkt = SZ_PKTMAX + SZ_HDR;
+        let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % SZ_PKTMAX.into_u64());
+        let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
+            .then(|| sz_partial_pkt_ + SZ_HDR)
+            .unwrap_or(Bytes::ZERO);
+        min_bw.length(sz_full_pkt).scale_by(nr_full_pkts as f64) + min_bw.length(sz_partial_pkt)
+    };
+    let prop_delay = hops.iter().map(|c| c.delay()).sum::<Nanosecs>();
+    head_delay + rest_delay + prop_delay
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,7 +121,6 @@ mod tests {
     #[test]
     fn bdp_correct() {
         let bdp = bdp(BANDWIDTH, INTERVAL);
-        eprintln!("bdp = {:?}", bdp);
         assert_eq!(bdp, Bytes::new(125_000));
     }
 

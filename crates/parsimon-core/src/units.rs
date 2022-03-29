@@ -38,6 +38,10 @@ macro_rules! unit {
                 self.0 as f64
             }
 
+            pub const fn into_usize(self) -> usize {
+                self.0 as usize
+            }
+
             pub fn scale_by(self, val: f64) -> Self {
                 let inner = self.0 as f64 * val;
                 Self(inner.round() as u64)
@@ -69,6 +73,34 @@ impl std::fmt::Display for Mbps {
 }
 
 unit!(BitsPerSec);
+
+impl BitsPerSec {
+
+    #[allow(non_snake_case)]
+    pub fn length(&self, size: Bytes) -> Nanosecs {
+        assert!(*self != BitsPerSec::ZERO);
+        if size == Bytes::ZERO {
+            return Nanosecs::ZERO;
+        }
+        let bytes = size.into_f64();
+        let bps = self.into_f64();
+        let delta = (bytes * 1e9 * 8.0) / bps;
+        let delta = delta.round() as u64;
+        Nanosecs::new(delta)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn width(&self, delta: Nanosecs) -> Bytes {
+        if delta == Nanosecs::ZERO {
+            return Bytes::ZERO;
+        }
+        let delta = delta.into_f64();
+        let bps = self.into_f64();
+        let size = (bps * delta) / (1e9 * 8.0);
+        let size = size.round() as u64;
+        Bytes::new(size)
+    }
+}
 
 impl std::fmt::Display for BitsPerSec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -310,24 +310,66 @@ impl DelayNetwork {
     where
         R: Rng,
     {
-        let edges = self
+        let channels = self
             .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
+            .map(|e| &self.topology.graph[e])
             .collect::<Vec<_>>();
-        if edges.is_empty() {
+        if channels.is_empty() {
             return None;
         }
-        edges
+        channels
             .iter()
-            .map(|&e| {
-                let chan = &self.topology.graph[e];
-                chan.dists.for_size(size).map(|dist| dist.sample(&mut rng))
-            })
+            .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
                 let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })
+    }
+
+    pub fn ideal_fct<R>(
+        &self,
+        size: Bytes,
+        (src, dst): (NodeId, NodeId),
+        mut rng: R,
+    ) -> Option<Nanosecs>
+    where
+        R: Rng,
+    {
+        let channels = self
+            .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
+            .map(|e| &self.topology.graph[e])
+            .collect::<Vec<_>>();
+        if channels.is_empty() {
+            return None;
+        }
+        Some(utils::ideal_fct(size, &channels))
+    }
+
+    pub fn slowdown<R>(&self, size: Bytes, (src, dst): (NodeId, NodeId), mut rng: R) -> Option<f64>
+    where
+        R: Rng,
+    {
+        let channels = self
+            .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
+            .map(|e| &self.topology.graph[e])
+            .collect::<Vec<_>>();
+        if channels.is_empty() {
+            return None;
+        }
+        let ideal_fct = utils::ideal_fct(size, &channels);
+        let delay = channels
+            .iter()
+            .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
+            .sum::<Option<f64>>()
+            .map(|pktnorm_delay| {
+                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let delay = nr_pkts * pktnorm_delay;
+                Nanosecs::new(delay as u64)
+            })?;
+        let real_fct = ideal_fct + delay;
+        Some(real_fct.into_f64() / ideal_fct.into_f64())
     }
 
     delegate::delegate! {

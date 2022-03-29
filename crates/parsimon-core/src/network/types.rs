@@ -99,6 +99,24 @@ macro_rules! channel_impl {
     };
 }
 
+impl<T: Channel> Channel for &T {
+    fn src(&self) -> NodeId {
+        (*self).src()
+    }
+
+    fn dst(&self) -> NodeId {
+        (*self).dst()
+    }
+
+    fn bandwidth(&self) -> BitsPerSec {
+        (*self).bandwidth()
+    }
+
+    fn delay(&self) -> Nanosecs {
+        (*self).delay()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize)]
 pub(crate) struct BasicChannel {
     pub(crate) src: NodeId,
@@ -229,5 +247,9 @@ impl FctRecord {
     pub fn pktnorm_delay(&self) -> f64 {
         let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
+    }
+
+    pub fn slowdown(&self) -> f64 {
+        self.fct.into_f64() / self.ideal.into_f64()
     }
 }
