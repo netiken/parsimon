@@ -156,11 +156,13 @@ impl SimNetwork {
             for &member in cluster.members() {
                 // Fill channel with packet-normalized delay predictions
                 let data = eidx2data.get(&representative).unwrap();
-                topology.graph[member].dists.fill(
-                    data,
-                    |rec| rec.size,
-                    |rec| rec.pktnorm_delay(),
-                )?;
+                if !data.is_empty() {
+                    topology.graph[member].dists.fill(
+                        data,
+                        |rec| rec.size,
+                        |rec| rec.pktnorm_delay(),
+                    )?;
+                }
             }
         }
         Ok(DelayNetwork {

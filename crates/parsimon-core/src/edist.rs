@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{collections::VecDeque, ops::Range};
 
 use rand::prelude::*;
 
@@ -11,7 +11,9 @@ pub struct EDistBuckets {
 
 impl EDistBuckets {
     pub(crate) fn new_empty() -> Self {
-        Self { inner: Vec::new() }
+        Self {
+            inner: vec![(Bytes::ZERO..Bytes::MAX, EDist::new())],
+        }
     }
 
     pub(crate) fn fill<T, F, G>(&mut self, data: &[T], f: F, g: G) -> Result<(), EDistError>
@@ -55,28 +57,37 @@ where
 {
     let mut data = Vec::from(data);
     data.sort_by(|&a, &b| f(a).cmp(&f(b)));
+    let mut data = VecDeque::from(data);
     let mut buckets = Vec::new();
     let mut acc = Vec::new();
-    for datum in data {
-        let min = acc.first().map(|&x| f(x)).unwrap_or(Bytes::MAX);
-        let max = f(datum);
+    let mut acc_min = Bytes::ZERO;
+    let mut acc_max;
+    while let Some(datum) = data.pop_front() {
         acc.push(datum);
-        if min <= max.scale_by(0.5) && acc.len() >= 100 {
-            buckets.push((min..max + Bytes::ONE, acc.clone()));
+        acc_max = f(datum);
+        if acc_min <= acc_max.scale_by(0.5) && acc.len() >= 100 {
+            while let Some(&datum) = data.front() {
+                if f(datum) == acc_max {
+                    acc.push(data.pop_front().unwrap());
+                } else {
+                    break;
+                }
+            }
+            buckets.push((acc_min..acc_max + Bytes::ONE, acc.clone()));
             acc.clear();
+            acc_min = acc_max + Bytes::ONE;
         }
     }
     if !acc.is_empty() {
         // Any elements left over in `acc`, however few, will be placed in the last bucket
-        let min = f(acc[0]);
-        let max = f(acc[acc.len() - 1]);
-        buckets.push((min..max + Bytes::ONE, acc));
+        buckets.push((acc_min..Bytes::MAX, acc));
     }
     buckets
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, derive_new::new)]
 pub struct EDist {
+    #[new(default)]
     samples: Vec<f64>,
 }
 
@@ -104,6 +115,6 @@ pub enum EDistError {
 
 impl Distribution<f64> for EDist {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> f64 {
-        self.samples.choose(rng).unwrap().to_owned()
+        self.samples.choose(rng).unwrap_or(&0_f64).to_owned()
     }
 }
