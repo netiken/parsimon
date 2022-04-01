@@ -234,7 +234,11 @@ impl SimNetwork {
         <Self as TraversableNetwork<FlowChannel>>::path(&self, src, dst, choose)
     }
 
-    pub fn utilization_of(&self, eidx: EdgeIndex) -> Option<f64> {
+    pub fn link_loads(&self) -> impl Iterator<Item = f64> + '_ {
+        self.edge_indices().filter_map(|eidx| self.load_of(eidx))
+    }
+
+    pub fn load_of(&self, eidx: EdgeIndex) -> Option<f64> {
         let chan = self.edge(eidx)?;
         let flows = self.flows_on(eidx)?;
         let nr_bytes = flows.iter().map(|f| f.size).sum::<Bytes>();
