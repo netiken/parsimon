@@ -1,3 +1,5 @@
+use std::{fs, io::Write, path::PathBuf, time::Instant};
+
 use parsimon_core::{
     linksim::{LinkSim, LinkSimError, LinkSimResult},
     network::{Channel, EdgeIndex, FctRecord, FlowId, SimNetwork},
@@ -14,6 +16,10 @@ pub struct MinimLink {
     dctcp_gain: f64,
     #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
+
+    // Stats
+    #[builder(default, setter(strip_option))]
+    elapsed_record: Option<PathBuf>,
 }
 
 impl LinkSim for MinimLink {
@@ -90,7 +96,16 @@ impl LinkSim for MinimLink {
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
             .build();
 
+        let start = Instant::now();
         let records = minim::run(cfg);
+        let elapsed_millis = start.elapsed().as_millis();
+        if let Some(path) = &self.elapsed_record {
+            let mut file = fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(path)?;
+            file.write_all(format!("{}\n", elapsed_millis).as_bytes())?;
+        }
 
         let records = records
             .into_iter()
