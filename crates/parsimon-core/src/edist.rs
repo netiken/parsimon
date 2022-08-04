@@ -66,8 +66,8 @@ impl Default for BucketOpts {
 
 // Bucket data automatically such that for each bucket `B`,
 //
-// 1. `B.len() >= 100`
-// 2. `B.max() >= 2 * B.min()`
+// 1. `B.len() >= opts.b`
+// 2. `B.max() >= opts.x * B.min()`
 fn bucket<T, F>(data: &[T], f: F, opts: &BucketOpts) -> Vec<(Range<Bytes>, Vec<T>)>
 where
     T: Clone + Copy,
