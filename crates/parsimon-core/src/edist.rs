@@ -16,13 +16,19 @@ impl EDistBuckets {
         }
     }
 
-    pub(crate) fn fill<T, F, G>(&mut self, data: &[T], f: F, g: G) -> Result<(), EDistError>
+    pub(crate) fn fill<T, F, G>(
+        &mut self,
+        data: &[T],
+        f: F,
+        g: G,
+        opts: BucketOpts,
+    ) -> Result<(), EDistError>
     where
         T: Clone + Copy,   // a datatype from which a size and a sample can be extracted
         F: Fn(T) -> Bytes, // size extractor
         G: Fn(T) -> f64,   // sample extractor
     {
-        let buckets = bucket(data, f);
+        let buckets = bucket(data, f, &opts);
         let inner = buckets
             .into_iter()
             .map(|(bkt, data)| {
@@ -46,11 +52,23 @@ impl EDistBuckets {
     }
 }
 
+#[derive(Debug, Clone, Copy, derive_new::new)]
+pub struct BucketOpts {
+    pub x: u8,
+    pub b: usize,
+}
+
+impl Default for BucketOpts {
+    fn default() -> Self {
+        Self { x: 2, b: 100 }
+    }
+}
+
 // Bucket data automatically such that for each bucket `B`,
 //
 // 1. `B.len() >= 100`
 // 2. `B.max() >= 2 * B.min()`
-fn bucket<T, F>(data: &[T], f: F) -> Vec<(Range<Bytes>, Vec<T>)>
+fn bucket<T, F>(data: &[T], f: F, opts: &BucketOpts) -> Vec<(Range<Bytes>, Vec<T>)>
 where
     T: Clone + Copy,
     F: Fn(T) -> Bytes,
@@ -65,7 +83,7 @@ where
     while let Some(datum) = data.pop_front() {
         acc.push(datum);
         acc_max = f(datum);
-        if acc_min <= acc_max.scale_by(0.5) && acc.len() >= 100 {
+        if acc_min <= acc_max.scale_by((opts.x as f64).recip()) && acc.len() >= opts.b {
             while let Some(&datum) = data.front() {
                 if f(datum) == acc_max {
                     acc.push(data.pop_front().unwrap());

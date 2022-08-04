@@ -15,7 +15,7 @@ pub use types::*;
 
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
-    edist::EDistError,
+    edist::{BucketOpts, EDistError},
     linksim::{LinkSim, LinkSimError},
     units::{BitsPerSec, Bytes, Nanosecs},
     utils,
@@ -161,6 +161,40 @@ impl SimNetwork {
                         data,
                         |rec| rec.size,
                         |rec| rec.pktnorm_delay(),
+                        BucketOpts::default(),
+                    )?;
+                }
+            }
+        }
+        Ok(DelayNetwork {
+            topology,
+            routes: self.routes,
+        })
+    }
+
+    pub fn into_delays_with_opts<S>(
+        self,
+        sim: S,
+        opts: BucketOpts,
+    ) -> Result<DelayNetwork, SimNetworkError>
+    where
+        S: LinkSim + Sync,
+    {
+        let mut topology = Topology::new_edist(&self.topology);
+        let eidx2data = self.simulate_clusters(sim)?;
+        // Every channel gets filled with delay distributions. All channels in the same cluster get
+        // filled using the cluster representative's data.
+        for cluster in &self.clusters {
+            let representative = cluster.representative();
+            for &member in cluster.members() {
+                // Fill channel with packet-normalized delay predictions
+                let data = eidx2data.get(&representative).unwrap();
+                if !data.is_empty() {
+                    topology.graph[member].dists.fill(
+                        data,
+                        |rec| rec.size,
+                        |rec| rec.pktnorm_delay(),
+                        opts,
                     )?;
                 }
             }
