@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use ns3_frontend::Ns3Simulation;
+use ns3_frontend::{CcKind, Ns3Simulation};
 use parsimon_core::{
     linksim::{LinkSim, LinkSimError, LinkSimResult},
     network::{
@@ -23,6 +23,8 @@ pub struct Ns3Link {
     window: Bytes,
     #[builder(setter(into))]
     base_rtt: Nanosecs,
+    #[builder(default)]
+    cc_kind: CcKind,
 }
 
 impl LinkSim for Ns3Link {
@@ -113,6 +115,7 @@ impl LinkSim for Ns3Link {
             .links(links)
             .window(self.window)
             .base_rtt(self.base_rtt)
+            .cc_kind(self.cc_kind)
             .flows(flows)
             .build();
         let records = sim.run().map_err(|e| anyhow::anyhow!(e))?;
