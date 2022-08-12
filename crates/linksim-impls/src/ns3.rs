@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use ns3_frontend::Ns3Simulation;
 use parsimon_core::{
@@ -13,28 +13,16 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::utils;
 
-#[derive(Debug)]
+#[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Ns3Link {
+    #[builder(setter(into))]
     root_dir: PathBuf,
+    #[builder(setter(into))]
     ns3_dir: PathBuf,
+    #[builder(setter(into))]
     window: Bytes,
+    #[builder(setter(into))]
     base_rtt: Nanosecs,
-}
-
-impl Ns3Link {
-    pub fn new(
-        root_dir: impl AsRef<Path>,
-        ns3_dir: impl AsRef<Path>,
-        window: Bytes,
-        base_rtt: Nanosecs,
-    ) -> Self {
-        Self {
-            root_dir: PathBuf::from(root_dir.as_ref()),
-            ns3_dir: PathBuf::from(ns3_dir.as_ref()),
-            window,
-            base_rtt,
-        }
-    }
 }
 
 impl LinkSim for Ns3Link {

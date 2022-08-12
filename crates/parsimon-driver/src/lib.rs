@@ -30,7 +30,12 @@ pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error
             base_rtt,
         } => {
             fs::create_dir_all(&root_dir)?;
-            let linksim = Ns3Link::new(root_dir, ns3_dir, window, base_rtt);
+            let linksim = Ns3Link::builder()
+                .root_dir(root_dir)
+                .ns3_dir(ns3_dir)
+                .window(window)
+                .base_rtt(base_rtt)
+                .build();
             parsimon_core::run(spec, linksim, DefaultClustering)?
         }
     };
