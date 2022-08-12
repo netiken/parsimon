@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 
+use derivative::Derivative;
 use parsimon_core::{
     network::Flow,
     network::{
@@ -21,6 +22,8 @@ pub struct Ns3Simulation {
     links: Vec<Link>,
     window: Bytes,
     base_rtt: Nanosecs,
+    #[builder(default)]
+    cc_kind: CcKind,
     // PRECONDITION: `flows` must be sorted by start time
     flows: Vec<Flow>,
 }
@@ -63,8 +66,12 @@ impl Ns3Simulation {
         let ns3_dir = std::fs::canonicalize(&self.ns3_dir)?;
         let window = self.window.into_u64().to_string();
         let base_rtt = self.base_rtt.into_u64().to_string();
+        let cc = match self.cc_kind {
+            CcKind::Dctcp => "dctcp",
+            CcKind::Timely => "timely",
+        };
         let extra_args = &[
-            "--topo", "topology", "--trace", "flows", "--bw", "10", "--cc", "dctcp",
+            "--topo", "topology", "--trace", "flows", "--bw", "10", "--cc", cc,
         ];
         cmd_lib::run_cmd! {
             cd ${ns3_dir};
@@ -219,4 +226,12 @@ mod tests {
         "###);
         Ok(())
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative)]
+#[derivative(Default)]
+pub enum CcKind {
+    #[derivative(Default)]
+    Dctcp,
+    Timely,
 }
