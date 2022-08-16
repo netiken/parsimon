@@ -52,9 +52,13 @@ impl Ns3Simulation {
         self.invoke_ns3()?;
 
         // Parse and return results
+        let cc = match self.cc_kind {
+            CcKind::Dctcp => "dctcp",
+            CcKind::Timely => "timely",
+        };
         let s = fs::read_to_string(mk_path(
             self.data_dir.as_path(),
-            "fct_topology_flows_dctcp.txt".as_ref(),
+            format!("fct_topology_flows_{}", cc).as_ref(),
         ))?;
         let records = parse_ns3_records(&s)?;
         Ok(records)
