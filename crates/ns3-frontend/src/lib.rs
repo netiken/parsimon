@@ -53,12 +53,12 @@ impl Ns3Simulation {
 
         // Parse and return results
         let cc = match self.cc_kind {
-            CcKind::Dctcp => "dctcp",
-            CcKind::Timely => "timely",
+            CcKind::Hpcc => "hp95", // XXX: dumb hack
+            _ => self.cc_kind.as_str(),
         };
         let s = fs::read_to_string(mk_path(
             self.data_dir.as_path(),
-            format!("fct_topology_flows_{}", cc).as_ref(),
+            format!("fct_topology_flows_{}.txt", cc).as_ref(),
         ))?;
         let records = parse_ns3_records(&s)?;
         Ok(records)
@@ -70,10 +70,7 @@ impl Ns3Simulation {
         let ns3_dir = std::fs::canonicalize(&self.ns3_dir)?;
         let window = self.window.into_u64().to_string();
         let base_rtt = self.base_rtt.into_u64().to_string();
-        let cc = match self.cc_kind {
-            CcKind::Dctcp => "dctcp",
-            CcKind::Timely => "timely",
-        };
+        let cc = self.cc_kind.as_str();
         let extra_args = &[
             "--topo", "topology", "--trace", "flows", "--bw", "10", "--cc", cc,
         ];
@@ -232,10 +229,24 @@ mod tests {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative, serde::Serialize, serde::Deserialize)]
 #[derivative(Default)]
+#[serde(rename_all = "lowercase")]
 pub enum CcKind {
     #[derivative(Default)]
     Dctcp,
     Timely,
+    Hpcc,
+    Dcqcn,
+}
+
+impl CcKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CcKind::Dctcp => "dctcp",
+            CcKind::Timely => "timely_vwin",
+            CcKind::Hpcc => "hp",
+            CcKind::Dcqcn => "dcqcn_vwin",
+        }
+    }
 }

@@ -977,6 +977,7 @@ dependencies = [
  "derivative",
  "insta",
  "parsimon-core",
+ "serde",
  "tempfile",
  "thiserror",
  "typed-builder",
