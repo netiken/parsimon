@@ -246,7 +246,7 @@ impl CcKind {
             CcKind::Dctcp => "dctcp",
             CcKind::Timely => "timely_vwin",
             CcKind::Hpcc => "hp",
-            CcKind::Dcqcn => "dcqcn_vwin",
+            CcKind::Dcqcn => "dcqcn_paper_vwin",
         }
     }
 }
