@@ -6,3 +6,17 @@ members = [
     "crates/clustering-impls",
     "crates/ns3-frontend",
 ]
+
+[workspace.package]
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1.0.65"
+derive-new = "0.5.9"
+insta = { version = "1.20.0", features = ["yaml"] }
+rayon = "1.5.3"
+rustc-hash = "1.1.0"
+tempfile = "3.3.0"
+thiserror = "1.0.35"
+typed-builder = "0.10.0"
+serde = { version = "1.0.145", features = ["derive"] }

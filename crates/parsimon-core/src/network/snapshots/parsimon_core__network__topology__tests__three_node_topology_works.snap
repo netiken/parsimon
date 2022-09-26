@@ -1,7 +1,6 @@
 ---
 source: crates/parsimon-core/src/network/topology.rs
 expression: topo.graph
-
 ---
 nodes:
   - id: 0
@@ -17,24 +16,24 @@ edges:
     - 2
     - src: 0
       dst: 2
-      bandwidth: 100
+      bandwidth: 100000000000
       delay: 1000
   - - 2
     - 0
     - src: 2
       dst: 0
-      bandwidth: 100
+      bandwidth: 100000000000
       delay: 1000
   - - 1
     - 2
     - src: 1
       dst: 2
-      bandwidth: 100
+      bandwidth: 100000000000
       delay: 1000
   - - 2
     - 1
     - src: 2
       dst: 1
-      bandwidth: 100
+      bandwidth: 100000000000
       delay: 1000
 
