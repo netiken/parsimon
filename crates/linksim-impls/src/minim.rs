@@ -1,3 +1,5 @@
+//! An interface to the Minim link-level simulator.
+
 use std::{fs, io::Write, path::PathBuf, time::Instant};
 
 use parsimon_core::{
@@ -13,6 +15,7 @@ use crate::utils;
 const SZ_PKTMAX: Bytes = Bytes::new(1_000);
 const SZ_PKTHDR: Bytes = Bytes::new(48);
 
+/// An Minim link simulation.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct MinimLink {
     #[builder(setter(into))]

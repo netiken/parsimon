@@ -1,3 +1,5 @@
+//! An interface to a link-level simulator built atop ns-3.
+
 use std::path::PathBuf;
 
 use ns3_frontend::{CcKind, Ns3Simulation};
@@ -13,6 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::utils;
 
+/// An ns-3 link simulation.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Ns3Link {
     #[builder(setter(into))]
