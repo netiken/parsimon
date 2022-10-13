@@ -293,17 +293,6 @@ dependencies = [
 
 [[package]]
 name = "delegate"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35c47a31748d9cfa641f6cccb3608385fafe261ba36054f3d40d5a3ca11eb1af"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "delegate"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "082a24a9967533dc5d743c602157637116fc1b52806d694a5a45e6f32567fcdd"
@@ -922,7 +911,7 @@ dependencies = [
 name = "minim"
 version = "0.1.0"
 dependencies = [
- "delegate 0.6.2",
+ "delegate",
  "derivative",
  "derive-new",
  "derive_more",
@@ -1172,7 +1161,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
- "delegate 0.8.0",
+ "delegate",
  "derive-new",
  "derive_more",
  "insta",
@@ -1635,9 +1624,9 @@ checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
 
 [[package]]
 name = "smallvec"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
+checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "socket2"

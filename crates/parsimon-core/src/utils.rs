@@ -71,8 +71,10 @@ where
     r.into_iter().map(|v| v.into_iter()).flatten()
 }
 
+// XXX: These are set to match the ns3 implementation's default behavior.
+// TODO: Allow configuring these in ns3.
 const SZ_PKTMAX: Bytes = Bytes::new(1_000);
-const SZ_HDR: Bytes = Bytes::new(48);
+const SZ_PKTHDR: Bytes = Bytes::new(48);
 
 pub(crate) fn ideal_fct<T>(size: Bytes, hops: &[T]) -> Nanosecs
 where
@@ -83,7 +85,7 @@ where
     let min_bw = bandwidths.iter().min().unwrap();
     let sz_head_ = cmp::min(SZ_PKTMAX, size);
     let sz_head = (sz_head_ != Bytes::ZERO)
-        .then(|| sz_head_ + SZ_HDR)
+        .then(|| sz_head_ + SZ_PKTHDR)
         .unwrap_or(Bytes::ZERO);
     let sz_rest_ = size - sz_head_;
     let head_delay = bandwidths
@@ -92,10 +94,10 @@ where
         .sum::<Nanosecs>();
     let rest_delay = {
         let nr_full_pkts = sz_rest_.into_usize() / SZ_PKTMAX.into_usize();
-        let sz_full_pkt = SZ_PKTMAX + SZ_HDR;
+        let sz_full_pkt = SZ_PKTMAX + SZ_PKTHDR;
         let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % SZ_PKTMAX.into_u64());
         let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
-            .then(|| sz_partial_pkt_ + SZ_HDR)
+            .then(|| sz_partial_pkt_ + SZ_PKTHDR)
             .unwrap_or(Bytes::ZERO);
         min_bw.length(sz_full_pkt).scale_by(nr_full_pkts as f64) + min_bw.length(sz_partial_pkt)
     };

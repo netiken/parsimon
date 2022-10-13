@@ -9,6 +9,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::utils;
 
+// XXX: These are set to match the ns3 implementation's default behavior.
+const SZ_PKTMAX: Bytes = Bytes::new(1_000);
+const SZ_PKTHDR: Bytes = Bytes::new(48);
+
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct MinimLink {
     #[builder(setter(into))]
@@ -94,6 +98,8 @@ impl LinkSim for MinimLink {
             .dctcp_marking_threshold(minim::units::Kilobytes::new(marking_threshold.into_u64()))
             .dctcp_gain(self.dctcp_gain)
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
+            .sz_pktmax(minim::units::Bytes::new(SZ_PKTMAX.into_u64()))
+            .sz_pkthdr(minim::units::Bytes::new(SZ_PKTHDR.into_u64()))
             .build();
 
         let start = Instant::now();
