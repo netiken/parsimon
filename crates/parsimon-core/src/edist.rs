@@ -20,7 +20,7 @@ impl EDistBuckets {
         &mut self,
         data: &[T],
         f: F,
-        g: G,
+        mut g: G,
         opts: BucketOpts,
     ) -> Result<(), EDistError>
     where
@@ -32,7 +32,7 @@ impl EDistBuckets {
         let inner = buckets
             .into_iter()
             .map(|(bkt, data)| {
-                let samples = data.into_iter().map(|x| g(x)).collect::<Vec<_>>();
+                let samples = data.into_iter().map(&mut g).collect::<Vec<_>>();
                 let dist = EDist::from_values(&samples)?;
                 Ok((bkt, dist))
             })
@@ -48,7 +48,7 @@ impl EDistBuckets {
     pub fn for_size(&self, size: Bytes) -> Option<&EDist> {
         self.inner
             .iter()
-            .find_map(|(bkt, dist)| bkt.contains(&size).then(|| dist))
+            .find_map(|(bkt, dist)| bkt.contains(&size).then_some(dist))
     }
 }
 

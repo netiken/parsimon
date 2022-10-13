@@ -68,7 +68,7 @@ where
             let v = f(chunk);
             s.send(v).unwrap(); // channel will not become disconnected
         });
-    r.into_iter().map(|v| v.into_iter()).flatten()
+    r.into_iter().flat_map(|v| v.into_iter())
 }
 
 // XXX: These are set to match the ns3 implementation's default behavior.

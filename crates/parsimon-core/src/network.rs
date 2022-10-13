@@ -93,7 +93,7 @@ impl Network {
             .topology
             .idx_of(&id)
             .copied()
-            .unwrap_or(NodeIndex::new(usize::MAX));
+            .unwrap_or_else(|| NodeIndex::new(usize::MAX));
         self.topology
             .graph
             .neighbors(idx)
@@ -265,7 +265,7 @@ impl SimNetwork {
         dst: NodeId,
         choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
     ) -> Path<FlowChannel> {
-        <Self as TraversableNetwork<FlowChannel>>::path(&self, src, dst, choose)
+        <Self as TraversableNetwork<FlowChannel>>::path(self, src, dst, choose)
     }
 
     pub fn link_loads(&self) -> impl Iterator<Item = f64> + '_ {
@@ -282,8 +282,7 @@ impl SimNetwork {
             .then(|| {
                 assert!(chan.bandwidth() != BitsPerSec::ZERO);
                 let bps = nr_bytes.into_f64() * 8.0 * 1e9 / duration.into_f64();
-                let load = bps / chan.bandwidth().into_f64();
-                load
+                bps / chan.bandwidth().into_f64()
             })
             .or(Some(0.0))
     }

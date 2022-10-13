@@ -56,7 +56,7 @@ pub(crate) struct ValidSpec {
 
 impl ValidSpec {
     pub(crate) fn collect_flows(&self) -> Vec<Flow> {
-        self.flows.iter().cloned().collect()
+        self.flows.to_vec()
     }
 }
 

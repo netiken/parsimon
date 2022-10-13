@@ -6,7 +6,7 @@ where
     F: Fn(&T) -> U,
 {
     assert!(!data.is_empty(), "percentiles: `data` is empty");
-    let mut points = data.iter().map(|x| extract(x)).collect::<Vec<_>>();
+    let mut points = data.iter().map(extract).collect::<Vec<_>>();
     points.sort();
     let len = points.len();
     (0..1000)

@@ -140,7 +140,7 @@ fn translate_flows(flows: &[Flow]) -> String {
 }
 
 fn parse_ns3_records(s: &str) -> Result<Vec<FctRecord>, ParseNs3Error> {
-    s.lines().map(|l| parse_ns3_record(l)).collect()
+    s.lines().map(parse_ns3_record).collect()
 }
 
 fn parse_ns3_record(s: &str) -> Result<FctRecord, ParseNs3Error> {

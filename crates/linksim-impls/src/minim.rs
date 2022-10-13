@@ -28,7 +28,9 @@ pub struct MinimLink {
 
 impl LinkSim for MinimLink {
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
-        let chan = network.edge(edge).ok_or(LinkSimError::UnknownEdge(edge))?;
+        let chan = network
+            .edge(edge)
+            .ok_or_else(|| LinkSimError::UnknownEdge(edge))?;
         let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
 
         let src_map = flows.iter().map(|f| f.src).collect::<FxHashSet<_>>();
@@ -62,7 +64,7 @@ impl LinkSim for MinimLink {
             .map(|f| {
                 let delay2dst = *src2dst2delay
                     .entry(f.src)
-                    .or_insert_with(|| FxHashMap::default())
+                    .or_insert_with(FxHashMap::default)
                     .entry(f.dst)
                     .or_insert_with(|| {
                         let path = network.path(f.src, f.dst, |c| c.first());

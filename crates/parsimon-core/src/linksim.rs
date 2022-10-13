@@ -6,7 +6,7 @@ pub type LinkSimResult = Result<Vec<FctRecord>, LinkSimError>;
 
 /// An interface for link simulators.
 pub trait LinkSim {
-    /// Given a network and an edge (which will be a [`crate::network::types::TracedChannel`]),
+    /// Given a network and an edge (which will be a [`crate::network::types::FlowChannel`]),
     /// simulate the edge and return a collection of FCT records.
     fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult;
 }

@@ -35,7 +35,7 @@ where
                 .par_iter()
                 .filter_map(|&candidate| {
                     let cfeat = features.get(candidate);
-                    (self.is_close_enough)(&rfeat, &cfeat).then(|| candidate)
+                    (self.is_close_enough)(&rfeat, &cfeat).then_some(candidate)
                 })
                 .collect::<Vec<_>>();
             for candidate in candidates {

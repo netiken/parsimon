@@ -133,7 +133,7 @@ impl Topology<FlowChannel> {
         for eidx in topology.graph.edge_indices() {
             let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
             let chan = &topology.graph[eidx];
-            g.add_edge(a, b, FlowChannel::new_from(&chan));
+            g.add_edge(a, b, FlowChannel::new_from(chan));
         }
         Topology {
             graph: g,
@@ -154,7 +154,7 @@ impl Topology<EDistChannel> {
         for eidx in topology.graph.edge_indices() {
             let (a, b) = topology.graph.edge_endpoints(eidx).unwrap();
             let chan = &topology.graph[eidx];
-            g.add_edge(a, b, EDistChannel::new_from(&chan));
+            g.add_edge(a, b, EDistChannel::new_from(chan));
         }
         Topology {
             graph: g,
@@ -323,7 +323,12 @@ mod tests {
             assert_eq!(n1, n2);
         }
         for (e1, e2) in topo1.graph.edge_weights().zip(topo2.graph.edge_weights()) {
-            let e2 = &BasicChannel::new(e2.src, e2.dst, BitsPerSec::new(100_000_000_000), Nanosecs::new(1000));
+            let e2 = &BasicChannel::new(
+                e2.src,
+                e2.dst,
+                BitsPerSec::new(100_000_000_000),
+                Nanosecs::new(1000),
+            );
             assert_eq!(e1, e2);
         }
         Ok(())
