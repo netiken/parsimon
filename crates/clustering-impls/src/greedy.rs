@@ -1,3 +1,5 @@
+//! A greedy link clustering algorithm.
+
 use std::collections::HashSet;
 
 use dashmap::DashMap;
@@ -8,6 +10,9 @@ use parsimon_core::{
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
+/// Greedy clustering. This algorithm arbitrarily selects a link and clusters it with all links
+/// that are "close" to it. Then, it repeats the process with another arbitrarily unclustered link,
+/// and so on.
 #[derive(Debug, derive_new::new)]
 pub struct GreedyClustering<F, G> {
     feature: F,

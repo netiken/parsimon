@@ -1,3 +1,6 @@
+//! Routines for extracting features from links. Features sare compared to determine whether links
+//! should be clustered together.
+
 use parsimon_core::{
     network::{types::FlowChannel, Channel, Flow},
     units::{Bytes, Nanosecs},
@@ -5,6 +8,10 @@ use parsimon_core::{
 
 use crate::utils;
 
+/// Extracts flow size distribution, inter-arrival time distribution, and link load. Distributions
+/// are returned as a vector of 1000 quantiles.
+///
+/// `flows` must contain at least two elements, otherwise this routine will return `None`.
 pub fn dists_and_load(chan: &FlowChannel, flows: &[Flow]) -> Option<DistsAndLoad> {
     (flows.len() >= 2).then(|| {
         let sizes = utils::percentiles(flows, |f| f.size);
@@ -22,9 +29,13 @@ pub fn dists_and_load(chan: &FlowChannel, flows: &[Flow]) -> Option<DistsAndLoad
     })
 }
 
+/// Flow size distribution, inter-arrival time distribution, and link load.
 #[derive(Debug, Clone)]
 pub struct DistsAndLoad {
+    /// The flow size distribution.
     pub sizes: Vec<Bytes>,
+    /// The inter-arrival time distribution.
     pub deltas: Vec<Nanosecs>,
+    /// The link load.
     pub load: f64,
 }

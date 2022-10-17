@@ -1,5 +1,8 @@
+//! Helper utilities.
+
 use parsimon_core::{network::Flow, units::Nanosecs};
 
+/// Returns 1000 quantiles from `data` using `extract` to select values to compare.
 pub fn percentiles<T, U, F>(data: &[T], extract: F) -> Vec<U>
 where
     U: Clone + Copy + PartialOrd + Ord,
@@ -17,7 +20,8 @@ where
         .collect()
 }
 
-// PRECONDITION: the flows are sorted by start time
+/// Returns the inter-arrival times of a given list of flows.
+/// PRECONDITION: the flows are sorted by start time.
 pub fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
     let nr_flows = flows.len();
     assert!(
@@ -31,7 +35,7 @@ pub fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
         .collect()
 }
 
-// Rescales the data to [0, 1]
+/// Rescales the data in `a` to [0, 1].
 pub fn rescale<T>(a: &[T]) -> Vec<f64>
 where
     T: Clone + Copy + Into<f64>,
@@ -45,8 +49,8 @@ where
     iter.map(|x| (x - min) / range).collect()
 }
 
-// Weighted mean absolute percentage error (WMAPE)
-// PRECONDITION: `a` cannot be all zeroes
+/// Weighted mean absolute percentage error (WMAPE)
+/// PRECONDITION: `a` cannot be all zeroes.
 pub fn wmape<T>(a: &[T], b: &[T]) -> f64
 where
     T: Clone + Copy + Into<f64>,
@@ -59,7 +63,7 @@ where
         / a.iter().map(|&x| Into::<f64>::into(x).abs()).sum::<f64>()
 }
 
-// Mean absolute error
+/// Mean absolute error.
 pub fn mae<T>(a: &[T], b: &[T]) -> f64
 where
     T: Clone + Copy + Into<f64>,
