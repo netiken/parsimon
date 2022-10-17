@@ -1,4 +1,6 @@
 //! An interface to the backend ns-3 simulation.
+//! 
+//! This crate is tightly coupled to interface provided by the ns-3 scripts.
 
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
