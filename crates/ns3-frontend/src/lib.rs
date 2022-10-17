@@ -1,3 +1,7 @@
+//! An interface to the backend ns-3 simulation.
+
+#![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
+
 use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
@@ -12,23 +16,35 @@ use parsimon_core::{
     units::{Bytes, Nanosecs},
 };
 
+/// An ns-3 simulation.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Ns3Simulation {
+    /// The directory in the ns-3 source tree containing the `run.py`.
     #[builder(setter(into))]
-    ns3_dir: PathBuf,
+    pub ns3_dir: PathBuf,
+    /// The directory in which to write simulation configs and data.
     #[builder(setter(into))]
-    data_dir: PathBuf,
-    nodes: Vec<Node>,
-    links: Vec<Link>,
-    window: Bytes,
-    base_rtt: Nanosecs,
+    pub data_dir: PathBuf,
+    /// The topology nodes.
+    pub nodes: Vec<Node>,
+    /// The topology links.
+    pub links: Vec<Link>,
+    /// The sencing window.
+    pub window: Bytes,
+    /// The base RTT.
+    pub base_rtt: Nanosecs,
+    /// The congestion control protocol.
     #[builder(default)]
-    cc_kind: CcKind,
-    // PRECONDITION: `flows` must be sorted by start time
-    flows: Vec<Flow>,
+    pub cc_kind: CcKind,
+    /// The flows to simulate.
+    /// PRECONDITION: `flows` must be sorted by start time
+    pub flows: Vec<Flow>,
 }
 
 impl Ns3Simulation {
+    /// Run the simulation, returning a vector of [FctRecord]s.
+    ///
+    /// This routine can fail due to IO errors or errors parsing ns-3 data.
     pub fn run(&self) -> Result<Vec<FctRecord>, Error> {
         // Set up directory
         let mk_path = |dir, file| [dir, file].into_iter().collect::<PathBuf>();
@@ -81,11 +97,14 @@ impl Ns3Simulation {
     }
 }
 
+/// The error type for [Ns3Simulation::run].
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Error parsing ns-3 formats.
     #[error("failed to parse ns-3 format")]
     ParseNs3(#[from] ParseNs3Error),
 
+    /// IO error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -163,11 +182,19 @@ fn parse_ns3_record(s: &str) -> Result<FctRecord, ParseNs3Error> {
     })
 }
 
+/// Error parsing ns-3 formats.
 #[derive(Debug, thiserror::Error)]
 pub enum ParseNs3Error {
+    /// Incorrect number of fields.
     #[error("Wrong number of fields (expected {expected}, got {got}")]
-    WrongNrFields { expected: usize, got: usize },
+    WrongNrFields {
+        /// Expected number of fields.
+        expected: usize,
+        /// Actual number of fields.
+        got: usize,
+    },
 
+    /// Error parsing field value.
     #[error("Failed to parse field")]
     ParseInt(#[from] std::num::ParseIntError),
 }
@@ -229,19 +256,24 @@ mod tests {
     }
 }
 
+/// Congestion control protocol.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative, serde::Serialize, serde::Deserialize)]
 #[derivative(Default)]
 #[serde(rename_all = "lowercase")]
 pub enum CcKind {
+    /// DCTCP.
     #[derivative(Default)]
     Dctcp,
+    /// TIMELY.
     Timely,
+    /// HPCC.
     Hpcc,
+    /// DCQCN.
     Dcqcn,
 }
 
 impl CcKind {
-    pub fn as_str(&self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             CcKind::Dctcp => "dctcp",
             CcKind::Timely => "timely_vwin",
