@@ -7,6 +7,7 @@ use parsimon_core::network::types::{Link, Node};
 use parsimon_core::network::{DelayNetwork, Flow, Network};
 use parsimon_core::units::{Bytes, Nanosecs};
 
+// TODO: remove me
 pub fn run_from_files(
     network: impl AsRef<Path>,
     flows: impl AsRef<Path>,
@@ -16,6 +17,7 @@ pub fn run_from_files(
     run(network, flows)
 }
 
+// TODO: remove me
 pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error> {
     let spec = parsimon_core::Spec::builder()
         .nodes(network.nodes)
@@ -42,6 +44,7 @@ pub fn run(network: NetworkSpec, flows: Vec<Flow>) -> Result<DelayNetwork, Error
     Ok(network)
 }
 
+// TODO: only used by clustering-basic... remove me
 pub fn read_network_spec(path: impl AsRef<Path>) -> Result<NetworkSpec, Error> {
     let contents = std::fs::read_to_string(path.as_ref())?;
     let network: NetworkSpec = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
@@ -52,6 +55,7 @@ pub fn read_network_spec(path: impl AsRef<Path>) -> Result<NetworkSpec, Error> {
     Ok(network)
 }
 
+// TODO: probably remove me
 pub fn read_network(topology_spec: impl AsRef<Path>) -> Result<Network, Error> {
     let spec = read_topology_spec(topology_spec)?;
     Ok(Network::new(&spec.nodes, &spec.links)?)
