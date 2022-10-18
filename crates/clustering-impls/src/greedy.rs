@@ -11,7 +11,7 @@ use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
 /// Greedy clustering. This algorithm arbitrarily selects a link and clusters it with all links
-/// that are "close" to it. Then, it repeats the process with another arbitrarily unclustered link,
+/// that are "close" to it. Then, it repeats the process with another arbitrary unclustered link,
 /// and so on.
 #[derive(Debug, derive_new::new)]
 pub struct GreedyClustering<F, G> {
