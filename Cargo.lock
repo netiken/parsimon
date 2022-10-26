@@ -1180,7 +1180,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "parsimon-driver"
+name = "parsimon-utils"
 version = "0.1.0"
 dependencies = [
  "linksim-impls",

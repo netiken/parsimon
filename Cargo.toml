@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/parsimon-core",
-    "crates/parsimon-driver",
+    "crates/parsimon-utils",
     "crates/linksim-impls",
     "crates/clustering-impls",
     "crates/ns3-frontend",
