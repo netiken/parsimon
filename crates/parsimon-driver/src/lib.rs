@@ -2,9 +2,7 @@ use std::path::{Path, PathBuf};
 
 use parsimon_core::network::types::{Link, Node};
 use parsimon_core::network::{Flow, Network};
-use parsimon_core::units::{Bytes, Nanosecs};
 
-// TODO: probably remove me
 pub fn read_network(topology_spec: impl AsRef<Path>) -> Result<Network, Error> {
     let spec = read_topology_spec(topology_spec)?;
     Ok(Network::new(&spec.nodes, &spec.links)?)
@@ -29,6 +27,12 @@ pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
     Ok(flows)
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TopologySpec {
+    pub nodes: Vec<Node>,
+    pub links: Vec<Link>,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("unknown file type: {0}")]
@@ -43,25 +47,6 @@ pub enum Error {
     #[error("IO error")]
     Io(#[from] std::io::Error),
 
-    #[error("failed to run Parsimon")]
-    ParsimonCore(#[from] parsimon_core::run::Error),
-
     #[error("invalid topology")]
     Topology(#[from] parsimon_core::network::TopologyError),
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct TopologySpec {
-    pub nodes: Vec<Node>,
-    pub links: Vec<Link>,
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub enum LinkSimKind {
-    Ns3 {
-        root_dir: PathBuf,
-        ns3_dir: PathBuf,
-        window: Bytes,
-        base_rtt: Nanosecs,
-    },
 }
