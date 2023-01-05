@@ -14,8 +14,6 @@ use crate::{
     utils,
 };
 
-// type HopMatrix = FxHashMap<NodeId, HopMap>;
-// type HopMap = FxHashMap<NodeId, Vec<NodeId>>;
 type HopMatrix = Vec<HopMap>;
 type HopMap = Vec<Vec<NodeId>>;
 
