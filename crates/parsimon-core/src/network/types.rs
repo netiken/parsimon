@@ -46,7 +46,7 @@ pub enum NodeKind {
 
 identifier!(NodeId, usize);
 
-/// A link is a bidirectional channel connecting two [Node]s.
+/// A link is a bidirectional channel connecting two [nodes](Node).
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Link {
     /// The first endpoint.
@@ -81,13 +81,18 @@ impl Link {
     }
 }
 
+/// This trait defines routines that must be implemented by any channel in a topology.
 pub trait Channel {
+    /// The source node.
     fn src(&self) -> NodeId;
 
+    /// The destination node.
     fn dst(&self) -> NodeId;
 
+    /// The bandwidth.
     fn bandwidth(&self) -> BitsPerSec;
 
+    /// The propagation delay.
     fn delay(&self) -> Nanosecs;
 }
 
@@ -142,6 +147,7 @@ pub(crate) struct BasicChannel {
 
 channel_impl!(BasicChannel);
 
+/// A `FlowChannel` is a channel containing flows to simulate.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct FlowChannel {
     pub(crate) src: NodeId,
@@ -175,6 +181,7 @@ impl FlowChannel {
 
     delegate::delegate! {
         to self.flows {
+            /// Returns the number of flows traversing this channel.
             #[call(len)]
             pub fn nr_flows(&self) -> usize;
         }
@@ -182,8 +189,7 @@ impl FlowChannel {
 }
 
 #[derive(Debug, Clone)]
-#[allow(unused)]
-pub struct EDistChannel {
+pub(crate) struct EDistChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,

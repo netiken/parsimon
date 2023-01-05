@@ -164,26 +164,44 @@ impl Topology<EDistChannel> {
     }
 }
 
+/// An error type listing some of the reasons a topology is invalid.
 #[derive(Debug, thiserror::Error)]
 pub enum TopologyError {
+    /// Duplicate node ID.
     #[error("duplicate node ID {0}")]
     DuplicateNodeId(NodeId),
 
+    /// Node IDs are not contiguous.
     #[error("node IDs not contiguous; hole before {0}")]
     HoleBeforeId(NodeId),
 
+    /// A node is connected to itself.
     #[error("node {0} is connected to itself")]
     NodeAdjacentSelf(NodeId),
 
+    /// A node is referenced by a link but does not exist.
     #[error("node {0} is not declared")]
     UndeclaredNode(NodeId),
 
+    /// Duplicate link between two nodes.
     #[error("duplicate links between {n1} and {n2}")]
-    DuplicateLink { n1: NodeId, n2: NodeId },
+    DuplicateLink {
+        /// The first node.
+        n1: NodeId,
+        /// The second node.
+        n2: NodeId,
+    },
 
+    /// More than one link connected to a host.
     #[error("host {id} has too many links (expected 1, got {n})")]
-    TooManyHostLinks { id: NodeId, n: usize },
+    TooManyHostLinks {
+        /// The host's node ID.
+        id: NodeId,
+        /// The actual number of links (should be 1).
+        n: usize,
+    },
 
+    /// A node is not connected to anything else.
     #[error("node {0} is not connected to any other node")]
     IsolatedNode(NodeId),
 }
