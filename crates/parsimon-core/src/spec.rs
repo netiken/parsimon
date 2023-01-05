@@ -5,6 +5,7 @@ use crate::network::{
     Flow, FlowId, Network, NodeKind, TopologyError,
 };
 
+/// A simulation specification.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec {
     nodes: Vec<Node>,
@@ -60,14 +61,28 @@ impl ValidSpec {
     }
 }
 
+/// Simulation specification error.
 #[derive(Debug, thiserror::Error)]
 pub enum SpecError {
+    /// A flow has an invalid source.
     #[error("flow {flow} has an invalid source ({src})")]
-    InvalidFlowSrc { flow: FlowId, src: NodeId },
+    InvalidFlowSrc {
+        /// The flow ID.
+        flow: FlowId,
+        /// The invalid source.
+        src: NodeId,
+    },
 
+    /// A flow has an invalid destination.
     #[error("flow {flow} has an invalid source ({dst})")]
-    InvalidFlowDst { flow: FlowId, dst: NodeId },
+    InvalidFlowDst {
+        /// The flow ID.
+        flow: FlowId,
+        /// The invalid destination.
+        dst: NodeId,
+    },
 
+    /// The topology is invalid.
     #[error("invalid topology")]
     InvalidTopology(#[from] TopologyError),
 }

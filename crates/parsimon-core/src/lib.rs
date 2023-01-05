@@ -1,4 +1,4 @@
-#![warn(unreachable_pub, missing_debug_implementations)]
+#![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
 //! The core Parsimon library. This crate defines [the routine](run::run) that turns a
 //! specification into a [network of delay distributions](network::DelayNetwork).

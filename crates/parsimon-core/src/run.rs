@@ -20,11 +20,14 @@ where
     Ok(delays)
 }
 
+/// The error type for the core [run] routine.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Invalid specification.
     #[error("Invalid specification")]
     InvalidSpec(#[from] SpecError),
 
+    /// Error running the simulations.
     #[error("SimNetwork error")]
     SimNetwork(#[from] SimNetworkError),
 }

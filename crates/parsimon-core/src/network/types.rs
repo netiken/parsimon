@@ -5,15 +5,20 @@ use petgraph::graph::EdgeIndex;
 use crate::edist::EDistBuckets;
 use crate::units::{BitsPerSec, Bytes, Nanosecs};
 
+/// The maximum packet size.
 pub const PKTSIZE_MAX: Bytes = Bytes::new(1000);
 
+/// A node in the network topology.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Node {
+    /// The node ID.
     pub id: NodeId,
+    /// Whether the node is a host or a switch.
     pub kind: NodeKind,
 }
 
 impl Node {
+    /// Create a new host with the given node ID.
     pub fn new_host(id: NodeId) -> Self {
         Self {
             id,
@@ -21,6 +26,7 @@ impl Node {
         }
     }
 
+    /// Create a new switch with the given node ID.
     pub fn new_switch(id: NodeId) -> Self {
         Self {
             id,
@@ -29,24 +35,32 @@ impl Node {
     }
 }
 
+/// A node is either a host or a switch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum NodeKind {
+    /// A host node.
     Host,
+    /// A switch node.
     Switch,
 }
 
 identifier!(NodeId, usize);
 
-/// A bidirectional channel.
+/// A link is a bidirectional channel connecting two [Node]s.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Link {
+    /// The first endpoint.
     pub a: NodeId,
+    /// The second endpoint.
     pub b: NodeId,
+    /// The link bandwidth.
     pub bandwidth: BitsPerSec,
+    /// THe propagation delay.
     pub delay: Nanosecs,
 }
 
 impl Link {
+    /// Creates a new link.
     pub fn new(
         a: NodeId,
         b: NodeId,
@@ -61,6 +75,7 @@ impl Link {
         }
     }
 
+    /// Returns true if the given link connects nodes `x` and `y`.
     pub fn connects(&self, x: NodeId, y: NodeId) -> bool {
         self.a == x && self.b == y || self.a == y && self.b == x
     }

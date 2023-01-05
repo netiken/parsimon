@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 macro_rules! unit {
     ($name: ident) => {
         #[derive(
