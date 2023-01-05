@@ -52,7 +52,7 @@ impl Network {
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
                 let path = self.edge_indices_between(src, dst, |choices| {
-                    assert!(!choices.is_empty(), "missing path from {} to {}", src, dst);
+                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
                     let idx = hash as usize % choices.len();
                     Some(&choices[idx])
                 });

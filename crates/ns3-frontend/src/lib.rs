@@ -1,5 +1,5 @@
 //! An interface to the backend ns-3 simulation.
-//! 
+//!
 //! This crate is tightly coupled to interface provided by the ns-3 scripts.
 
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
@@ -56,14 +56,14 @@ impl Ns3Simulation {
         let topology = translate_topology(&self.nodes, &self.links);
         fs::write(
             mk_path(self.data_dir.as_path(), "topology.txt".as_ref()),
-            &topology,
+            topology,
         )?;
 
         // Set up the flows
         let flows = translate_flows(&self.flows);
         fs::write(
             mk_path(self.data_dir.as_path(), "flows.txt".as_ref()),
-            &flows,
+            flows,
         )?;
 
         // Run ns-3
@@ -76,7 +76,7 @@ impl Ns3Simulation {
         };
         let s = fs::read_to_string(mk_path(
             self.data_dir.as_path(),
-            format!("fct_topology_flows_{}.txt", cc).as_ref(),
+            format!("fct_topology_flows_{cc}.txt").as_ref(),
         ))?;
         let records = parse_ns3_records(&s)?;
         Ok(records)
@@ -125,7 +125,7 @@ fn translate_topology(nodes: &[Node], links: &[Link]) -> String {
         .map(|&s| s.id.to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    writeln!(s, "{}", switch_ids).unwrap();
+    writeln!(s, "{switch_ids}").unwrap();
     // src0 dst0 rate delay error_rate
     // src1 dst1 rate delay error_rate
     // ...

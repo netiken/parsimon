@@ -18,13 +18,13 @@ pub fn read_topology_spec(path: impl AsRef<Path>) -> Result<TopologySpec, Error>
     let contents = std::fs::read_to_string(path.as_ref())?;
     let network: TopologySpec = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
         Some("json") => serde_json::from_str(&contents)?,
-        Some("dhall") => serde_dhall::from_str(&contents).parse()?,
+        Some("dhall") => serde_dhall::from_str(&contents).parse().map_err(Box::new)?,
         _ => return Err(Error::UnknownFileType(path.as_ref().into())),
     };
     Ok(network)
 }
 
-/// Read [`Flow`]s from a file in JSON format.
+/// Read [`Flow`]s from a file in JSON format>
 pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
     let contents = std::fs::read_to_string(path.as_ref())?;
     let flows: Vec<Flow> = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
@@ -52,7 +52,7 @@ pub enum Error {
 
     /// Error serializing/deserializing Dhall.
     #[error("Dhall error")]
-    Dhall(#[from] serde_dhall::Error),
+    Dhall(#[from] Box<serde_dhall::Error>),
 
     /// Error serializing/deserializing JSON.
     #[error("JSON error")]

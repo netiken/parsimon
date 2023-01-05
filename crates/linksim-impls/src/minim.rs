@@ -115,7 +115,7 @@ impl LinkSim for MinimLink {
                 .append(true)
                 .create(true)
                 .open(path)?;
-            file.write_all(format!("{}\n", elapsed_millis).as_bytes())?;
+            file.write_all(format!("{elapsed_millis}\n").as_bytes())?;
         }
 
         let records = records

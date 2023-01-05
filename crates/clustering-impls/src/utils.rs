@@ -26,8 +26,7 @@ pub fn deltas(flows: &[Flow]) -> Vec<Nanosecs> {
     let nr_flows = flows.len();
     assert!(
         nr_flows >= 2,
-        "deltas: `flows` not long enough, `nr_flows` = {}",
-        nr_flows
+        "deltas: `flows` not long enough, `nr_flows` = {nr_flows}",
     );
     flows
         .windows(2)

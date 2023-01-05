@@ -8,10 +8,8 @@ use parsimon_core::{
 fn ns3_runs() -> anyhow::Result<()> {
     const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
     let data_dir = tempfile::tempdir()?;
-    let ns3_dir = format!(
-        "{}/../../backends/High-Precision-Congestion-Control/simulation",
-        MANIFEST_DIR
-    );
+    let ns3_dir =
+        format!("{MANIFEST_DIR}/../../backends/High-Precision-Congestion-Control/simulation",);
     let (nodes, links) = parsimon_core::testing::eight_node_config();
     let flows = vec![
         Flow {
@@ -30,7 +28,7 @@ fn ns3_runs() -> anyhow::Result<()> {
         },
     ];
     let sim = Ns3Simulation::builder()
-        .ns3_dir(&ns3_dir)
+        .ns3_dir(ns3_dir)
         .data_dir(data_dir.path())
         .nodes(nodes)
         .links(links)
