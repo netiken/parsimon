@@ -218,18 +218,21 @@ pub struct Path<'a, C> {
 }
 
 impl<'a, C: Channel> Path<'a, C> {
-    pub fn new(channels: Vec<(EdgeIndex, &'a C)>) -> Self {
+    pub(crate) fn new(channels: Vec<(EdgeIndex, &'a C)>) -> Self {
         Self { inner: channels }
     }
 
+    /// Returns the propagation delay along the entire path.
     pub fn delay(&self) -> Nanosecs {
         self.inner.iter().map(|&(_, c)| c.delay()).sum()
     }
 
+    /// Returns an iterator over the link bandwidths in the path.
     pub fn bandwidths(&self) -> impl Iterator<Item = BitsPerSec> + '_ {
         self.inner.iter().map(|&(_, c)| c.bandwidth())
     }
 
+    /// Returns an iterator over the edge indices in the path.
     pub fn iter(&self) -> impl Iterator<Item = &(EdgeIndex, &'a C)> + '_ {
         self.inner.iter()
     }
@@ -237,27 +240,39 @@ impl<'a, C: Channel> Path<'a, C> {
 
 identifier!(FlowId, usize);
 
+/// A flow is a logically grouped sequence of bytes from a source to a destination.
 #[derive(Debug, Default, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
+    /// The flow ID.
     pub id: FlowId,
+    /// The flow source.
     pub src: NodeId,
+    /// The flow destination.
     pub dst: NodeId,
+    /// The flow size.
     pub size: Bytes,
+    /// The flow's start time.
     pub start: Nanosecs,
 }
 
+/// An `FctRecord` records the flow completion time of a particular flow.
 #[derive(Debug, Clone, Copy)]
 pub struct FctRecord {
-    // From flow
+    /// The flow ID.
     pub id: FlowId,
+    /// The flow size.
     pub size: Bytes,
+    /// The flow's start time.
     pub start: Nanosecs,
-    // From simulation
+
+    /// The measured flow completion time.
     pub fct: Nanosecs,
+    /// The ideal flow completion time on an unloaded network.
     pub ideal: Nanosecs,
 }
 
 impl FctRecord {
+    /// Returns the delay encountered by the flow, defined as the measured FCT minus the ideal FCT.
     pub fn delay(&self) -> Nanosecs {
         // Some of these cases are possible because of rounding errors
         match self.fct.cmp(&self.ideal) {
@@ -266,11 +281,14 @@ impl FctRecord {
         }
     }
 
+    /// Returns the packet-normalized delay, which is the delay normalized by the number of packets
+    /// in the flow.
     pub fn pktnorm_delay(&self) -> f64 {
         let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
     }
 
+    /// Returns the FCT slowdown which is the measured FCT divided by the ideal FCT.
     pub fn slowdown(&self) -> f64 {
         self.fct.into_f64() / self.ideal.into_f64()
     }
