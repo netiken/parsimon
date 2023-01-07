@@ -211,6 +211,7 @@ impl EDistChannel {
 
 channel_impl!(EDistChannel);
 
+/// A `Path` is a sequence of channels.
 #[derive(Debug)]
 pub struct Path<'a, C> {
     inner: Vec<(EdgeIndex, &'a C)>,
