@@ -29,7 +29,10 @@ impl Cluster {
     }
 }
 
+/// The trait that must be implemented by all clustering algorithms.
 pub trait ClusteringAlgo {
+    /// Given a [`SimNetwork`], run a clustering algorithm and return a vector of
+    /// [clusters](Cluster).
     fn cluster(&self, network: &SimNetwork) -> Vec<Cluster>;
 }
 

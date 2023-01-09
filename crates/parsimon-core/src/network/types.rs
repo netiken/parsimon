@@ -1,3 +1,6 @@
+//! This module defines core types used to construct a network, such as [nodes](Node),
+//! [links][Link], and [channels](Channel).
+
 use std::cmp::Ordering;
 
 use petgraph::graph::EdgeIndex;

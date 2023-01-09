@@ -27,6 +27,7 @@ use self::{
     types::{BasicChannel, EDistChannel, FlowChannel, Link, Node},
 };
 
+/// A `Network` is a collection of nodes, links, and routes.
 #[derive(Debug, Clone)]
 pub struct Network {
     topology: Topology<BasicChannel>,
@@ -34,13 +35,14 @@ pub struct Network {
 }
 
 impl Network {
+    /// Creates a new network.
     pub fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let topology = Topology::new(nodes, links)?;
         let routes = Routes::new(&topology);
         Ok(Self { topology, routes })
     }
 
-    /// Create a `SimNetwork`.
+    /// Creates a `SimNetwork`.
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`, and there must be a path between them.
@@ -81,6 +83,7 @@ impl Network {
         }
     }
 
+    /// Returns the [NodeId]s of all hosts in the network.
     pub fn host_ids(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.nodes().filter_map(|n| match n.kind {
             NodeKind::Host => Some(n.id),
@@ -88,6 +91,7 @@ impl Network {
         })
     }
 
+    /// Returns all nodes directly connected to the node with the given ID.
     pub fn neighbors(&self, id: NodeId) -> impl Iterator<Item = NodeId> + '_ {
         let idx = self
             .topology
@@ -102,11 +106,13 @@ impl Network {
 
     delegate::delegate! {
         to self.topology.graph {
+            /// Returns an iterator over all nodes in the network.
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
         }
 
         to self.topology.links {
+            /// Returns an iterator over all links in the network.
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }

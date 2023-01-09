@@ -2,6 +2,7 @@ use petgraph::graph::EdgeIndex;
 
 use crate::network::{FctRecord, SimNetwork};
 
+/// The return type of a link simulation.
 pub type LinkSimResult = Result<Vec<FctRecord>, LinkSimError>;
 
 /// An interface for link simulators.
@@ -17,14 +18,18 @@ impl<T: LinkSim> LinkSim for &T {
     }
 }
 
+/// Link simulation error.
 #[derive(Debug, thiserror::Error)]
 pub enum LinkSimError {
+    /// Tried to simulate a link that doesn't exist.
     #[error("Edge {} does not exist", .0.index())]
     UnknownEdge(EdgeIndex),
 
+    /// IO error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    /// Arbitrary catch-all.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
