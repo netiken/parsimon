@@ -1,7 +1,7 @@
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
-//! The core Parsimon library. This crate defines [the routine](run::run) that turns a
-//! specification into a [network of delay distributions](network::DelayNetwork).
+//! The core Parsimon library. This crate defines [run::run()], which turns a
+//! [specification](Spec) into a [network of delay distributions](network::DelayNetwork).
 
 #[macro_use]
 mod ident;

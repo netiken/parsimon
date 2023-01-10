@@ -6,9 +6,7 @@ use crate::network::{DelayNetwork, SimNetworkError};
 use crate::spec::{Spec, SpecError};
 
 /// The core `Parsimon` routine. This transforms a specification into a network of delay
-/// distributions.
-///
-/// This function returns an error if the provided mappings in the specification are invalid.
+/// distributions, using a provided [link simulator](LinkSim) and [clustering algorithm](ClusteringAlgo).
 pub fn run<S, C>(spec: Spec, linksim: S, clusterer: C) -> Result<DelayNetwork, Error>
 where
     S: LinkSim + Sync,
