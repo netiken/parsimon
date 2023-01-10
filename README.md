@@ -33,5 +33,5 @@ $ cd crates/parsimon-core
 $ cargo doc --open
 ```
 
-This should a browser tab with documentation for the library and its
+This should open a browser tab with documentation for the library and its
 dependencies.
