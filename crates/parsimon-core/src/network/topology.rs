@@ -344,7 +344,7 @@ mod tests {
             let e2 = &BasicChannel::new(
                 e2.src,
                 e2.dst,
-                BitsPerSec::new(100_000_000_000),
+                BitsPerSec::new(10_000_000_000),
                 Nanosecs::new(1000),
             );
             assert_eq!(e1, e2);
