@@ -1,3 +1,5 @@
+//! This module defines the [`LinkSim`] trait that every link simulator must implement.
+
 use petgraph::graph::EdgeIndex;
 
 use crate::network::{FctRecord, SimNetwork};

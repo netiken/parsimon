@@ -1,9 +1,12 @@
+//! Types for building empirical distributions
+
 use std::{collections::VecDeque, ops::Range};
 
 use rand::prelude::*;
 
 use crate::units::Bytes;
 
+/// Empirical distributions bucketed by size ranges (in bytes).
 #[derive(Debug, Clone)]
 pub struct EDistBuckets {
     inner: Vec<(Range<Bytes>, EDist)>,
@@ -41,10 +44,12 @@ impl EDistBuckets {
         Ok(())
     }
 
+    /// Returns an iterator over all size ranges.
     pub fn bucket_ranges(&self) -> impl Iterator<Item = &Range<Bytes>> {
         self.inner.iter().map(|(range, _)| range)
     }
 
+    /// Returns the empirical distribution for a particular size.
     pub fn for_size(&self, size: Bytes) -> Option<&EDist> {
         self.inner
             .iter()
@@ -52,9 +57,12 @@ impl EDistBuckets {
     }
 }
 
+/// Parameters for the bucketing algorithm.
 #[derive(Debug, Clone, Copy, derive_new::new)]
 pub struct BucketOpts {
+    /// For each bucket `B`, `B.max() >= x * B.min()`.
     pub x: u8,
+    /// For each bucket `B`, `B.max() >= b`.
     pub b: usize,
 }
 
@@ -103,6 +111,7 @@ where
     buckets
 }
 
+/// An empirical distribution.
 #[derive(Debug, Clone, derive_new::new)]
 pub struct EDist {
     #[new(default)]
@@ -110,6 +119,7 @@ pub struct EDist {
 }
 
 impl EDist {
+    /// Creates a new empirical distribution from a slice of values.
     pub fn from_values(values: &[f64]) -> Result<Self, EDistError> {
         if values.is_empty() {
             return Err(EDistError::NoValues);
@@ -119,14 +129,17 @@ impl EDist {
         })
     }
 
+    /// Returns the mean of the distribution.
     pub fn mean(&self) -> f64 {
         let total = self.samples.iter().sum::<f64>();
         total / self.samples.len() as f64
     }
 }
 
+/// Error type for creating empirical distributions.
 #[derive(Debug, thiserror::Error)]
 pub enum EDistError {
+    /// No values were provided---cannot have an empty distribution.
     #[error("No values provided")]
     NoValues,
 }

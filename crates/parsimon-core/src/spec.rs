@@ -1,3 +1,7 @@
+//! This module defines simulation specifications ([`Spec`]), which consists of nodes, links, and
+//! flows. `Parsimon` turns a specification into a [`DelayNetwork`](crate::network::DelayNetwork),
+//! which can be queried for FCT delay estimates.
+
 use std::collections::HashSet;
 
 use crate::network::{

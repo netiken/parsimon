@@ -1,3 +1,5 @@
+//! This module defines the [`run`] routine, which is `Parsimon`'s main entry point.
+
 use crate::cluster::ClusteringAlgo;
 use crate::linksim::LinkSim;
 use crate::network::{DelayNetwork, SimNetworkError};

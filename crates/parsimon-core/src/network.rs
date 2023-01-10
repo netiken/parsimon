@@ -1,3 +1,10 @@
+//! This module defines the various network types that make up `Parsimon`'s core structure.
+//!
+//! The first step is to construct a [`Network`] of nodes and links. This network is then populated
+//! with [flows](Flow) to produce a [`SimNetwork`], where each edge can be independently simulated.
+//! Finally, the simulations are run to produce a [`DelayNetwork`], which can be queried for FCT
+//! delay estimates.
+
 mod routing;
 pub(crate) mod topology;
 pub mod types;
@@ -129,6 +136,9 @@ impl TraversableNetwork<BasicChannel> for Network {
     }
 }
 
+/// A `SimNetwork` is similar to a [`Network`], except each link is augmented with a sequence of
+/// flows traversing it. These links can be simulated to produce a [`DelayNetwork`]. Optionally,
+/// they can also be clustered to reduce the number of simulations.
 #[derive(Debug, Clone)]
 pub struct SimNetwork {
     topology: Topology<FlowChannel>,
@@ -141,6 +151,7 @@ pub struct SimNetwork {
 }
 
 impl SimNetwork {
+    /// Clusters the links in the network with the given clustering algorithm.
     pub fn cluster<C>(&mut self, algorithm: C)
     where
         C: ClusteringAlgo,
@@ -149,6 +160,10 @@ impl SimNetwork {
         self.clusters = clusters;
     }
 
+    /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
+    /// processing the results into empirical distributions bucketed by flow size.
+    ///
+    /// Bucketing is done with default [`BucketOpts`] parameters `x = 2` and `b = 100`.
     pub fn into_delays<S>(self, sim: S) -> Result<DelayNetwork, SimNetworkError>
     where
         S: LinkSim + Sync,
@@ -178,6 +193,10 @@ impl SimNetwork {
         })
     }
 
+    /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
+    /// processing the results into empirical distributions bucketed by flow size.
+    ///
+    /// Bucketing is done using the provided [`BucketOpts`] parameters.
     pub fn into_delays_with_opts<S>(
         self,
         sim: S,
@@ -211,7 +230,7 @@ impl SimNetwork {
         })
     }
 
-    pub fn simulate_clusters<S>(
+    pub(crate) fn simulate_clusters<S>(
         &self,
         sim: S,
     ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
@@ -234,7 +253,7 @@ impl SimNetwork {
         Ok(r.iter().collect())
     }
 
-    // POSTCONDITION: returned flows are sorted by start time
+    /// Returns the flows traversing a given edge, or `None` if the edge doesn't exist.
     pub fn flows_on(&self, edge: EdgeIndex) -> Option<Vec<Flow>> {
         self.edge(edge).map(|chan| {
             chan.flow_ids()
@@ -243,28 +262,32 @@ impl SimNetwork {
         })
     }
 
+    /// Returns the node with the given ID, or `None` if no such node exists.
     pub fn node(&self, id: NodeId) -> Option<&Node> {
         self.topology
             .idx_of(&id)
             .map(|&idx| &self.topology.graph[idx])
     }
 
+    /// Returns the edge connecting two nodes, if any.
     pub fn find_edge(&self, a: NodeId, b: NodeId) -> Option<EdgeIndex> {
         let a = *self.topology.idx_of(&a)?;
         let b = *self.topology.idx_of(&b)?;
         self.topology.graph.find_edge(a, b)
     }
 
-    /// Get a reference to the sim network's clusters.
+    /// Gets a reference to the `SimNetwork`'s clusters.
     pub fn clusters(&self) -> &[Cluster] {
         self.clusters.as_ref()
     }
 
-    /// Set the sim network's clusters.
+    /// Sets the `SimNetwork`'s clusters.
     pub fn set_clusters(&mut self, clusters: Vec<Cluster>) {
         self.clusters = clusters;
     }
 
+    /// Returns a path from `src` to `dst`, using `choose` to select a path when there are multiple
+    /// options.
     pub fn path(
         &self,
         src: NodeId,
@@ -274,10 +297,12 @@ impl SimNetwork {
         <Self as TraversableNetwork<FlowChannel>>::path(self, src, dst, choose)
     }
 
+    /// Returns an iterator over all link loads.
     pub fn link_loads(&self) -> impl Iterator<Item = f64> + '_ {
         self.edge_indices().filter_map(|eidx| self.load_of(eidx))
     }
 
+    /// Returns the load of a particular link, or `None` if the link doesn't exist.
     pub fn load_of(&self, eidx: EdgeIndex) -> Option<f64> {
         let chan = self.edge(eidx)?;
         let flows = self.flows_on(eidx)?;
@@ -295,24 +320,31 @@ impl SimNetwork {
 
     delegate::delegate! {
         to self.topology.graph {
+            /// Returns an iterator over all nodes in the network.
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
 
+            /// Returns the `FlowChannel` at the given index, if any.
             #[call(edge_weight)]
             pub fn edge(&self, idx: EdgeIndex) -> Option<&FlowChannel>;
 
+            /// Returns an iterator over all `FlowChannel`s in the network.
             #[call(edge_weights)]
             pub fn channels(&self) -> impl Iterator<Item = &FlowChannel>;
 
+            /// Returns an iterator over all edge indices.
             pub fn edge_indices(&self) -> impl Iterator<Item = EdgeIndex>;
         }
 
         to self.topology.links {
+            /// Returns an iterator over all `Link`s in the network.
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
 
         to self.clusters {
+            /// Returns the number of clusters in the network. By default, each link is in its own
+            /// cluster.
             #[call(len)]
             pub fn nr_clusters(&self) -> usize;
         }
@@ -329,15 +361,20 @@ impl TraversableNetwork<FlowChannel> for SimNetwork {
     }
 }
 
+/// Errors which can be encountered running link-level simulations.
 #[derive(Debug, thiserror::Error)]
 pub enum SimNetworkError {
+    /// Error simulating link.
     #[error("Failed to simulate link")]
     LinkSim(#[from] LinkSimError),
 
+    /// Error constructing empirical distribution.
     #[error("Failed to construct empirical distribution")]
     EDist(#[from] EDistError),
 }
 
+/// A `DelayNetwork` is a network in which all edges contain empirical distributions of FCT delay
+/// bucketed by flow size.
 #[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct DelayNetwork {

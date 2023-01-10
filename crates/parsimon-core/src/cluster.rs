@@ -1,3 +1,5 @@
+//! This module defines types and traits which allow link clustering and pruning.
+
 use std::collections::HashSet;
 
 use petgraph::graph::EdgeIndex;
