@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+//! Types for representing units.
 
 macro_rules! unit {
     ($name: ident) => {

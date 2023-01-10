@@ -383,6 +383,8 @@ pub struct DelayNetwork {
 }
 
 impl DelayNetwork {
+    /// Predict a point estimate of delay for a flow of a particular `size` going from `src` to
+    /// `dst`.
     pub fn predict<R>(
         &self,
         size: Bytes,
@@ -410,6 +412,8 @@ impl DelayNetwork {
             })
     }
 
+    /// Compute the ideal FCT on an unloaded network for a flow of `size` bytes going from `src` to
+    /// `dst.
     pub fn ideal_fct<R>(
         &self,
         size: Bytes,
@@ -429,6 +433,10 @@ impl DelayNetwork {
         Some(utils::ideal_fct(size, &channels))
     }
 
+    /// Predict a point estimate of slowdown for a flow of a particular `size` going from `src` to
+    /// `dst`.
+    ///
+    /// Slowdown is defined as the measured FCT divided by the ideal FCT.
     pub fn slowdown<R>(&self, size: Bytes, (src, dst): (NodeId, NodeId), mut rng: R) -> Option<f64>
     where
         R: Rng,
@@ -456,11 +464,13 @@ impl DelayNetwork {
 
     delegate::delegate! {
         to self.topology.graph {
+            /// Returns an iterator over the [nodes](Node) in the network.
             #[call(node_weights)]
             pub fn nodes(&self) -> impl Iterator<Item = &Node>;
         }
 
         to self.topology.links {
+            /// Returns an iterator over the [links](Link) in the network.
             #[call(iter)]
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
