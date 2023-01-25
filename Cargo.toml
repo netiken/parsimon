@@ -5,6 +5,7 @@ members = [
     "crates/linksim-impls",
     "crates/clustering-impls",
     "crates/ns3-frontend",
+    "examples/poisson",
 ]
 
 [workspace.package]

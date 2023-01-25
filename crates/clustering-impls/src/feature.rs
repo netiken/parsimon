@@ -1,4 +1,4 @@
-//! Routines for extracting features from links. Features sare compared to determine whether links
+//! Routines for extracting features from links. Features are compared to determine whether links
 //! should be clustered together.
 
 use parsimon_core::{
