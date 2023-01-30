@@ -48,21 +48,14 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let mean_flow_size = args.flow;
     let mean_load = args.load;
-    println!(
-        "mean flow size {}, mean load level {}",
-        args.flow, args.load
-    );
 
     // Calculate mean interarrival time T (ns) for one server
     // Bandwidth (bps) * Load (bps/bps) = desired rate (bps)
     // flow size (bytes) to flow size (bits) / desired rate (bps) --> seconds --> ns
     let bandwidth_bps = BitsPerSec::from(Gbps::new(10));
     let desired_rate = bandwidth_bps.into_f64() * mean_load;
-    let mean_interarrival_time_one_node = (mean_flow_size.into_f64() * 8.0 * 1e9) / desired_rate;
-    dbg!(mean_interarrival_time_one_node);
-    dbg!(mean_flow_size);
-    let mean_interarrival_time_all_nodes =
-        Nanosecs::new((mean_interarrival_time_one_node.round() as u64) / 4);
+    let mean_interarrival_time =
+        Nanosecs::new(((mean_flow_size.into_f64() * 8.0 * 1e9) / (desired_rate * 4.0)) as u64);
 
     let (nodes, links) = eight_node_config();
 
@@ -70,20 +63,23 @@ fn main() -> anyhow::Result<()> {
     // Flow size distribution
     let mut rng = rand::thread_rng();
     let flow_exp = Exp::new(mean_flow_size.into_f64().recip()).unwrap();
-    let start_exp = Exp::new(mean_interarrival_time_all_nodes.into_f64().recip()).unwrap();
+    let start_exp = Exp::new(mean_interarrival_time.into_f64().recip()).unwrap();
     let mut node_nums: Vec<usize> = (0..4).collect();
 
     // Draw flows from distribution
     let mut flows: Vec<Flow> = Vec::new();
+    let mut prev_start: u64 = 0;
     for i in 0..100000 {
         node_nums.shuffle(&mut rng);
+        let new_start: u64 = start_exp.sample(&mut rng).round() as u64 + prev_start;
         flows.push(Flow {
             id: FlowId::new(i),
             src: NodeId::new(node_nums[0]),
             dst: NodeId::new(node_nums[1]),
             size: Bytes::new(flow_exp.sample(&mut rng).round() as u64),
-            start: Nanosecs::new(start_exp.sample(&mut rng).round() as u64),
+            start: Nanosecs::new(new_start),
         });
+        prev_start = new_start;
     }
 
     // let network = network.into_simulations(flows.clone());
@@ -122,6 +118,5 @@ fn main() -> anyhow::Result<()> {
     println!("The 50th percentile is: {:?}", ns_predictions[p50_idx]);
     println!("The 95th percentile is: {:?}", ns_predictions[p95_idx]);
     println!("The 99th percentile is: {:?}", ns_predictions[p99_idx]);
-
     Ok(())
 }
