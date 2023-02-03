@@ -48,6 +48,10 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let mean_flow_size = args.flow;
     let mean_load = args.load;
+    anyhow::ensure!(
+        0.0 < mean_load && mean_load < 1.0,
+        "load must be between 0.0 and 1.0, exclusive"
+    );
 
     // Calculate mean interarrival time T (ns) for one server
     // Bandwidth (bps) * Load (bps/bps) = desired rate (bps)
@@ -82,7 +86,6 @@ fn main() -> anyhow::Result<()> {
         prev_start = new_start;
     }
 
-    // let network = network.into_simulations(flows.clone());
     let spec_flows = flows.clone();
     let spec = Spec::builder()
         .nodes(nodes)
