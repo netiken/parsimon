@@ -1020,6 +1020,7 @@ dependencies = [
 [[package]]
 name = "minim"
 version = "0.1.0"
+source = "git+https://github.com/netiken/minim.git#1e2d41d7b89742e1d4fe6f86d4250a95e2d5794b"
 dependencies = [
  "delegate",
  "derivative",
