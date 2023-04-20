@@ -20,6 +20,14 @@ impl<T: LinkSim> LinkSim for &T {
     }
 }
 
+/// A full specification for a link-level simulation.
+#[derive(Debug)]
+pub struct LinkSimSpec {}
+
+/// A descriptor for a link-level simulation.
+#[derive(Debug)]
+pub(crate) struct LinkSimDesc {}
+
 /// Link simulation error.
 #[derive(Debug, thiserror::Error)]
 pub enum LinkSimError {
