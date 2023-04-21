@@ -13,8 +13,6 @@ use parsimon_core::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::utils;
-
 /// An ns-3 link simulation.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Ns3Link {
@@ -65,7 +63,7 @@ impl LinkSim for Ns3Link {
                 // same min bandwidth and delay
                 let path = network.path(src, bsrc, |choices| choices.first());
                 let &(eidx, chan) = path.iter().next().unwrap();
-                let bandwidth = chan.bandwidth() - utils::ack_rate(network, eidx);
+                let bandwidth = chan.bandwidth() - network.ack_rate_of(eidx).unwrap();
                 let delay = path.delay();
                 let link = Link::new(src, bsrc, bandwidth, delay);
                 links.push(link);
@@ -88,7 +86,7 @@ impl LinkSim for Ns3Link {
             }
         }
         // Now include the bottleneck channel
-        let bandwidth = chan.bandwidth() - utils::ack_rate(network, edge);
+        let bandwidth = chan.bandwidth() - network.ack_rate_of(edge).unwrap();
         let bottleneck = Link::new(bsrc, bdst, bandwidth, chan.delay());
         links.push(bottleneck);
 

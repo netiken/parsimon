@@ -5,11 +5,9 @@ use std::cmp::Ordering;
 
 use petgraph::graph::EdgeIndex;
 
+use crate::constants::{SZ_ACK, SZ_PKTMAX};
 use crate::edist::EDistBuckets;
 use crate::units::{BitsPerSec, Bytes, Nanosecs};
-
-/// The maximum packet size.
-pub const PKTSIZE_MAX: Bytes = Bytes::new(1000);
 
 /// A node in the network topology.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -157,6 +155,7 @@ pub struct FlowChannel {
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
+    pub(crate) nr_ack_bytes: Bytes,
     pub(crate) flows: Vec<FlowId>,
 }
 
@@ -169,6 +168,7 @@ impl FlowChannel {
             dst: chan.dst,
             bandwidth: chan.bandwidth,
             delay: chan.delay,
+            nr_ack_bytes: Bytes::ZERO,
             flows: Vec::new(),
         }
     }
@@ -179,6 +179,9 @@ impl FlowChannel {
     }
 
     pub(crate) fn push_flow(&mut self, flow: &Flow) {
+        let nr_pkts = (flow.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+        let nr_ack_bytes = SZ_ACK.scale_by(nr_pkts);
+        self.nr_ack_bytes += nr_ack_bytes;
         self.flows.push(flow.id);
     }
 
@@ -287,7 +290,7 @@ impl FctRecord {
     /// Returns the packet-normalized delay, which is the delay normalized by the number of packets
     /// in the flow.
     pub fn pktnorm_delay(&self) -> f64 {
-        let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+        let nr_pkts = (self.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
     }
 

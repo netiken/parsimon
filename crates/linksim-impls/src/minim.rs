@@ -3,17 +3,12 @@
 use std::{fs, io::Write, path::PathBuf, time::Instant};
 
 use parsimon_core::{
+    constants::{SZ_PKTHDR, SZ_PKTMAX},
     linksim::{LinkSim, LinkSimError, LinkSimResult},
     network::{Channel, EdgeIndex, FctRecord, FlowId, SimNetwork},
     units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::utils;
-
-// XXX: These are set to match the ns3 implementation's default behavior.
-const SZ_PKTMAX: Bytes = Bytes::new(1_000);
-const SZ_PKTHDR: Bytes = Bytes::new(48);
 
 /// An Minim link simulation.
 #[derive(Debug, typed_builder::TypedBuilder)]
@@ -78,12 +73,12 @@ impl MinimLink {
                 let (delay2btl, link_rate) = if src == bsrc {
                     let path = network.path(src, bdst, |c| c.first());
                     let &(eidx, chan) = path.iter().next().unwrap();
-                    let link_rate = chan.bandwidth() - utils::ack_rate(network, eidx);
+                    let link_rate = chan.bandwidth() - network.ack_rate_of(eidx).unwrap();
                     (Nanosecs::ZERO, link_rate)
                 } else {
                     let path = network.path(src, bsrc, |c| c.first());
                     let &(eidx, chan) = path.iter().next().unwrap();
-                    let link_rate = chan.bandwidth() - utils::ack_rate(network, eidx);
+                    let link_rate = chan.bandwidth() - network.ack_rate_of(eidx).unwrap();
                     (path.delay(), link_rate)
                 };
                 minim::SourceDesc::builder()
@@ -125,7 +120,7 @@ impl MinimLink {
         let bandwidth = if src_map.contains(&chan.src()) {
             chan.bandwidth().scale_by(100_f64)
         } else {
-            chan.bandwidth() - utils::ack_rate(network, edge)
+            chan.bandwidth() - network.ack_rate_of(edge).unwrap()
         };
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))

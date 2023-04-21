@@ -22,6 +22,7 @@ pub use types::*;
 
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
+    constants::SZ_PKTMAX,
     edist::{BucketOpts, EDistError},
     linksim::{LinkSim, LinkSimError},
     units::{BitsPerSec, Bytes, Nanosecs},
@@ -318,6 +319,26 @@ impl SimNetwork {
             .or(Some(0.0))
     }
 
+    /// Returns the rate of the ACKs on a given link, or `None` if the link doesn't exist.
+    pub fn ack_rate_of(&self, eidx: EdgeIndex) -> Option<BitsPerSec> {
+        let chan = self.edge(eidx)?;
+        let reverse_edge = self.find_edge(chan.dst(), chan.src()).unwrap();
+        let reverse_chan = self.edge(reverse_edge)?;
+        let duration = self.duration_of(reverse_edge)?;
+        if duration == Nanosecs::ZERO {
+            return Some(BitsPerSec::ZERO);
+        }
+        let inner = reverse_chan.nr_ack_bytes.into_f64() * 8.0 * 1e9 / duration.into_f64();
+        Some(BitsPerSec::new(inner.round() as u64))
+    }
+
+    pub(crate) fn duration_of(&self, eidx: EdgeIndex) -> Option<Nanosecs> {
+        let flows = self.flows_on(eidx)?;
+        let duration = flows.last().map(|f| f.start).unwrap_or_default()
+            - flows.first().map(|f| f.start).unwrap_or_default();
+        Some(duration)
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             /// Returns an iterator over all nodes in the network.
@@ -406,7 +427,7 @@ impl DelayNetwork {
             .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })
@@ -454,7 +475,7 @@ impl DelayNetwork {
             .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })?;

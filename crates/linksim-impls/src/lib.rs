@@ -5,5 +5,3 @@
 
 pub mod minim;
 pub mod ns3;
-
-pub(crate) mod utils;
