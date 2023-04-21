@@ -322,6 +322,7 @@ impl SimNetwork {
     /// Returns the rate of the ACKs on a given link, or `None` if the link doesn't exist.
     pub fn ack_rate_of(&self, eidx: EdgeIndex) -> Option<BitsPerSec> {
         let chan = self.edge(eidx)?;
+        // TODO: Make finding a reverse edge more efficient
         let reverse_edge = self.find_edge(chan.dst(), chan.src()).unwrap();
         let reverse_chan = self.edge(reverse_edge)?;
         let duration = self.duration_of(reverse_edge)?;
