@@ -4,8 +4,8 @@ use std::{fs, io::Write, path::PathBuf, time::Instant};
 
 use parsimon_core::{
     constants::{SZ_PKTHDR, SZ_PKTMAX},
-    linksim::{LinkSim, LinkSimError, LinkSimResult},
-    network::{Channel, EdgeIndex, FctRecord, FlowId, SimNetwork},
+    linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec},
+    network::{FctRecord, FlowId},
     units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -25,8 +25,8 @@ pub struct MinimLink {
 }
 
 impl LinkSim for MinimLink {
-    fn simulate(&self, network: &SimNetwork, edge: EdgeIndex) -> LinkSimResult {
-        let cfg = self.build_config(network, edge)?;
+    fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
+        let cfg = self.build_config(spec)?;
         let start = Instant::now();
         let records = minim::run(cfg);
         let elapsed_millis = start.elapsed().as_millis();
@@ -56,30 +56,27 @@ impl LinkSim for MinimLink {
 impl MinimLink {
     fn build_config(
         &self,
-        network: &SimNetwork,
-        edge: EdgeIndex,
+        spec: LinkSimSpec,
     ) -> Result<minim::Config<minim::queue::FifoQ>, LinkSimError> {
-        let chan = network
-            .edge(edge)
-            .ok_or_else(|| LinkSimError::UnknownEdge(edge))?;
-        let flows = network.flows_on(edge).unwrap(); // we already know the channel exists
+        let src_ids = spec
+            .nodes
+            .iter()
+            .filter_map(|n| match n.kind {
+                LinkSimNodeKind::Source => Some(n.id),
+                _ => None,
+            })
+            .collect::<FxHashSet<_>>();
+        let topo = spec.topo()?;
 
-        let src_map = flows.iter().map(|f| f.src).collect::<FxHashSet<_>>();
-        let (bsrc, bdst) = (chan.src(), chan.dst());
-
-        let srcs = src_map
+        let srcs = src_ids
             .iter()
             .map(|&src| {
-                let (delay2btl, link_rate) = if src == bsrc {
-                    let path = network.path(src, bdst, |c| c.first());
-                    let &(eidx, chan) = path.iter().next().unwrap();
-                    let link_rate = chan.bandwidth() - network.ack_rate_of(eidx).unwrap();
-                    (Nanosecs::ZERO, link_rate)
+                let (delay2btl, link_rate) = if src == spec.bottleneck.a {
+                    (Nanosecs::ZERO, spec.bottleneck.available_bandwidth)
                 } else {
-                    let path = network.path(src, bsrc, |c| c.first());
-                    let &(eidx, chan) = path.iter().next().unwrap();
-                    let link_rate = chan.bandwidth() - network.ack_rate_of(eidx).unwrap();
-                    (path.delay(), link_rate)
+                    let (delays, bandwidths): (Vec<_>, Vec<_>) =
+                        topo.path_info(src, spec.bottleneck.a, |c| c.first()).unzip();
+                    (delays.iter().copied().sum(), *bandwidths.first().unwrap())
                 };
                 minim::SourceDesc::builder()
                     .id(minim::SourceId::new(src.inner()))
@@ -90,7 +87,8 @@ impl MinimLink {
             .collect::<Vec<_>>();
 
         let mut src2dst2delay = FxHashMap::default();
-        let flows = flows
+        let flows = spec
+            .flows
             .into_iter()
             .map(|f| {
                 let delay2dst = *src2dst2delay
@@ -98,8 +96,9 @@ impl MinimLink {
                     .or_insert_with(FxHashMap::default)
                     .entry(f.dst)
                     .or_insert_with(|| {
-                        let path = network.path(f.src, f.dst, |c| c.first());
-                        path.delay()
+                        topo.path_info(f.src, f.dst, |c| c.first())
+                            .map(|(delay, _)| delay)
+                            .sum::<Nanosecs>()
                     });
                 minim::FlowDesc {
                     id: minim::FlowId::new(f.id.inner()),
@@ -112,15 +111,16 @@ impl MinimLink {
             .collect::<Vec<_>>();
 
         let marking_threshold = Kilobytes::new(
-            chan.bandwidth()
+            spec.bottleneck
+                .total_bandwidth
                 .scale_by(1e9_f64.recip())
                 .scale_by(3_f64)
                 .into_u64(),
         );
-        let bandwidth = if src_map.contains(&chan.src()) {
-            chan.bandwidth().scale_by(100_f64)
+        let bandwidth = if src_ids.contains(&spec.bottleneck.a) {
+            spec.bottleneck.total_bandwidth.scale_by(100_f64)
         } else {
-            chan.bandwidth() - network.ack_rate_of(edge).unwrap()
+            spec.bottleneck.available_bandwidth
         };
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))

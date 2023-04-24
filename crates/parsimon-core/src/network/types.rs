@@ -4,13 +4,14 @@
 use std::cmp::Ordering;
 
 use petgraph::graph::EdgeIndex;
+use rustc_hash::FxHashSet;
 
 use crate::constants::{SZ_ACK, SZ_PKTMAX};
 use crate::edist::EDistBuckets;
 use crate::units::{BitsPerSec, Bytes, Nanosecs};
 
 /// A node in the network topology.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     /// The node ID.
     pub id: NodeId,
@@ -56,7 +57,7 @@ pub struct Link {
     pub b: NodeId,
     /// The link bandwidth.
     pub bandwidth: BitsPerSec,
-    /// THe propagation delay.
+    /// The propagation delay.
     pub delay: Nanosecs,
 }
 
@@ -155,7 +156,11 @@ pub struct FlowChannel {
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
+
+    // `FlowChannel` specific data
     pub(crate) nr_ack_bytes: Bytes,
+    pub(crate) flow_srcs: FxHashSet<NodeId>,
+    pub(crate) flow_dsts: FxHashSet<NodeId>,
     pub(crate) flows: Vec<FlowId>,
 }
 
@@ -169,6 +174,8 @@ impl FlowChannel {
             bandwidth: chan.bandwidth,
             delay: chan.delay,
             nr_ack_bytes: Bytes::ZERO,
+            flow_srcs: FxHashSet::default(),
+            flow_dsts: FxHashSet::default(),
             flows: Vec::new(),
         }
     }
@@ -182,6 +189,8 @@ impl FlowChannel {
         let nr_pkts = (flow.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
         let nr_ack_bytes = SZ_ACK.scale_by(nr_pkts);
         self.nr_ack_bytes += nr_ack_bytes;
+        self.flow_srcs.insert(flow.src);
+        self.flow_dsts.insert(flow.dst);
         self.flows.push(flow.id);
     }
 

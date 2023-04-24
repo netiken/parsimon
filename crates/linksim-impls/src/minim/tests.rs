@@ -6,11 +6,13 @@ use minim::{
     Config, FlowDesc, SourceDesc,
 };
 use parsimon_core::{
-    network::{Channel, Flow, FlowId, Network, NodeId},
+    linksim::LinkSimSpec,
+    network::{Flow, FlowId, Network, NodeId},
     testing,
 };
 use rand::prelude::*;
 use rand_distr::Exp;
+use rustc_hash::FxHashMap;
 
 use super::MinimLink;
 
@@ -53,6 +55,10 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
     let network = Network::new(&nodes, &links)?;
 
     // Convert the `Network` into a `SimNetwork` by adding flows.
+    let id2flow = flows
+        .iter()
+        .map(|f| (f.id, f.to_owned()))
+        .collect::<FxHashMap<_, _>>();
     let network = network.into_simulations(flows);
 
     // Build a `MinimLink` instance and use it to generate `MinimCheck`s.
@@ -63,13 +69,23 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
         .build();
     let snapshot = network
         .edge_indices()
-        .map(|eidx| {
-            let cfg = linksim.build_config(&network, eidx)?;
-            let chan = network
-                .edge(eidx)
-                .ok_or_else(|| anyhow::anyhow!("unknown edge"))?;
+        .filter_map(|eidx| network.link_sim_desc(eidx))
+        .map(|desc| {
+            let flows = desc
+                .flows
+                .iter()
+                .map(|id| id2flow.get(id).unwrap().to_owned())
+                .collect::<Vec<_>>();
+            let spec = LinkSimSpec {
+                bottleneck: desc.bottleneck,
+                other_links: desc.other_links,
+                nodes: desc.nodes,
+                flows,
+            };
+            let (bsrc, bdst) = (spec.bottleneck.a, spec.bottleneck.b);
+            let cfg = linksim.build_config(spec)?;
             let check = MinimCheck::from_config(&cfg);
-            Ok(((chan.src(), chan.dst()), check))
+            Ok(((bsrc, bdst), check))
         })
         .collect::<anyhow::Result<BTreeMap<(NodeId, NodeId), MinimCheck>>>()?;
     Ok(snapshot)

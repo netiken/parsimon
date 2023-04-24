@@ -5,7 +5,7 @@
 //! Finally, the simulations are run to produce a [`DelayNetwork`], which can be queried for FCT
 //! delay estimates.
 
-mod routing;
+pub(crate) mod routing;
 pub(crate) mod topology;
 pub mod types;
 
@@ -17,6 +17,7 @@ use rand::prelude::*;
 use rayon::prelude::*;
 
 pub use petgraph::graph::EdgeIndex;
+use rustc_hash::FxHashSet;
 pub use topology::TopologyError;
 pub use types::*;
 
@@ -24,7 +25,9 @@ use crate::{
     cluster::{Cluster, ClusteringAlgo},
     constants::SZ_PKTMAX,
     edist::{BucketOpts, EDistError},
-    linksim::{LinkSim, LinkSimError},
+    linksim::{
+        LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
+    },
     units::{BitsPerSec, Bytes, Nanosecs},
     utils,
 };
@@ -242,11 +245,22 @@ impl SimNetwork {
         // Simulate all cluster representatives in parallel.
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
-            let chan = self.edge(edge).unwrap();
-            let data = if chan.nr_flows() > 0 {
-                sim.simulate(self, edge)?
-            } else {
-                Vec::new()
+            let data = match self.link_sim_desc(edge) {
+                Some(desc) => {
+                    let flows = desc
+                        .flows
+                        .iter()
+                        .map(|id| self.flows.get(id).unwrap().to_owned())
+                        .collect::<Vec<_>>();
+                    let spec = LinkSimSpec {
+                        bottleneck: desc.bottleneck,
+                        other_links: desc.other_links,
+                        nodes: desc.nodes,
+                        flows,
+                    };
+                    sim.simulate(spec)?
+                }
+                None => Vec::new(),
             };
             s.send((edge, data)).unwrap(); // the channel should never become disconnected
             Result::<(), SimNetworkError>::Ok(())
@@ -338,6 +352,98 @@ impl SimNetwork {
         let duration = flows.last().map(|f| f.start).unwrap_or_default()
             - flows.first().map(|f| f.start).unwrap_or_default();
         Some(duration)
+    }
+
+    /// Returns a link-level descriptor for a given edge.
+    pub fn link_sim_desc(&self, edge: EdgeIndex) -> Option<LinkSimDesc> {
+        let chan = self.edge(edge)?;
+        if chan.nr_flows() == 0 {
+            // Sources and destinations for link-level topologies are extracted from flows, so if
+            // there are no flows, there is no link-level topology.
+            return None;
+        }
+
+        // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectively
+        let (srcs, dsts) = (&chan.flow_srcs, &chan.flow_dsts);
+        let (bsrc, bdst) = (chan.src(), chan.dst());
+
+        assert!(srcs.intersection(dsts).count() == 0);
+        let nodes = srcs
+            .iter()
+            .chain(dsts.iter())
+            .chain([&bsrc, &bdst].into_iter())
+            .collect::<FxHashSet<_>>();
+        let nodes = nodes
+            .into_iter()
+            .map(|&id| {
+                let Node { kind, .. } = self.node(id).unwrap();
+                let kind = match kind {
+                    NodeKind::Switch => LinkSimNodeKind::Switch,
+                    NodeKind::Host if srcs.contains(&id) => LinkSimNodeKind::Source,
+                    NodeKind::Host if dsts.contains(&id) => LinkSimNodeKind::Destination,
+                    _ => unreachable!("`link_sim_desc`: unknown node kind"),
+                };
+                LinkSimNode { id, kind }
+            })
+            .collect::<Vec<_>>();
+
+        let mut other_links = Vec::new();
+        // Connect sources to the bottleneck. If `bsrc` is in `srcs`, then the
+        // bottleneck channel is assumed to be a host-ToR up-channel.
+        if srcs.contains(&bsrc) {
+            assert!(srcs.len() == 1);
+        } else {
+            for &src in srcs {
+                // CORRECTNESS: assumes all paths from `src` to `bsrc` have the
+                // same min bandwidth and delay
+                let path = self.path(src, bsrc, |choices| choices.first());
+                let &(eidx, chan) = path.iter().next().unwrap();
+                let link = LinkSimLink {
+                    a: src,
+                    b: bsrc,
+                    total_bandwidth: chan.bandwidth(),
+                    available_bandwidth: chan.bandwidth() - self.ack_rate_of(eidx).unwrap(),
+                    delay: path.delay(),
+                };
+                other_links.push(link);
+            }
+        }
+        // Connect the bottleneck to destinations with _fat links_. If `bdst`
+        // is in `dsts`, then the bottleneck channel is assumed to be a
+        // ToR-host down-channel.
+        if dsts.contains(&bdst) {
+            assert!(dsts.len() == 1);
+        } else {
+            for &dst in dsts {
+                // CORRECTNESS: assumes all paths from `bdst` to `dst` have the
+                // same min bandwidth and delay
+                let path = self.path(bdst, dst, |choices| choices.first());
+                let bandwidth = path.bandwidths().min().unwrap().scale_by(10.0);
+                let link = LinkSimLink {
+                    a: bdst,
+                    b: dst,
+                    total_bandwidth: bandwidth,
+                    available_bandwidth: bandwidth,
+                    delay: path.delay(),
+                };
+                other_links.push(link);
+            }
+        }
+        // Now include the bottleneck channel
+        let bottleneck = LinkSimLink {
+            a: bsrc,
+            b: bdst,
+            total_bandwidth: chan.bandwidth(),
+            available_bandwidth: chan.bandwidth() - self.ack_rate_of(edge).unwrap(),
+            delay: chan.delay(),
+        };
+
+        Some(LinkSimDesc {
+            bottleneck,
+            other_links,
+            nodes,
+            flows: chan.flows.clone(),
+        })
     }
 
     delegate::delegate! {
@@ -509,7 +615,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
     }
 }
 
-trait TraversableNetwork<C: Clone + Channel> {
+pub(crate) trait TraversableNetwork<C: Clone + Channel> {
     fn topology(&self) -> &Topology<C>;
 
     fn routes(&self) -> &Routes;
@@ -560,6 +666,8 @@ trait TraversableNetwork<C: Clone + Channel> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use anyhow::Context;
 
     use crate::network::FlowId;
@@ -624,6 +732,42 @@ mod tests {
             .iter()
             .enumerate()
             .all(|(i, c)| c.representative().index() == i));
+        Ok(())
+    }
+
+    #[test]
+    fn link_sim_desc_correct() -> anyhow::Result<()> {
+        let (nodes, links) = testing::eight_node_config();
+        let flows = vec![
+            Flow {
+                id: FlowId::new(0),
+                src: NodeId::new(0),
+                dst: NodeId::new(1),
+                size: Bytes::new(1234),
+                start: Nanosecs::new(1_000_000_000),
+            },
+            Flow {
+                id: FlowId::new(1),
+                src: NodeId::new(0),
+                dst: NodeId::new(2),
+                size: Bytes::new(5678),
+                start: Nanosecs::new(2_000_000_000),
+            },
+        ];
+
+        let network = Network::new(&nodes, &links)?;
+        let network = network.into_simulations(flows);
+        let check = network
+            .edge_indices()
+            .filter_map(|eidx| {
+                let chan = network.edge(eidx).unwrap();
+                let desc = network.link_sim_desc(eidx)?;
+                Some(((chan.src(), chan.dst()), desc))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        insta::assert_yaml_snapshot!(check);
+
         Ok(())
     }
 }
