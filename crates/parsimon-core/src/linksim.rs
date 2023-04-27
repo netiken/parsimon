@@ -3,15 +3,13 @@
 
 use std::iter;
 
-use petgraph::graph::EdgeIndex;
+use petgraph::prelude::*;
 use rustc_hash::FxHashMap;
 
 use crate::{
     network::{
-        routing::Routes,
-        topology::Topology,
-        types::{BasicChannel, Link, Node},
-        FctRecord, Flow, FlowId, NodeId, NodeKind, TopologyError, TraversableNetwork,
+        types::{Link, Node},
+        FctRecord, Flow, FlowId, NodeId, NodeKind, TopologyError,
     },
     units::{BitsPerSec, Nanosecs},
 };
@@ -45,9 +43,21 @@ pub struct LinkSimSpec {
 }
 
 impl LinkSimSpec {
+    /// Returns the nodes in the spec;
+    pub fn nodes(&self) -> impl Iterator<Item = LinkSimNode> + '_ {
+        self.nodes.iter().copied()
+    }
+
+    /// Returns the links in the spec.
+    pub fn links(&self) -> impl Iterator<Item = LinkSimLink> + '_ {
+        iter::once(&self.bottleneck)
+            .chain(self.other_links.iter())
+            .copied()
+    }
+
     /// Returns the nodes in the spec, erasing any `LinkSim`-specific information.
     pub fn generic_nodes(&self) -> impl Iterator<Item = Node> + '_ {
-        self.nodes.iter().map(|n| {
+        self.nodes().map(|n| {
             let kind = match n.kind {
                 LinkSimNodeKind::Source | LinkSimNodeKind::Destination => NodeKind::Host,
                 LinkSimNodeKind::Switch => NodeKind::Switch,
@@ -59,9 +69,8 @@ impl LinkSimSpec {
     /// Returns the links in the spec, erasing any `LinkSim`-specific information. Bandwidths are
     /// translated using the `available_bandwidth` field of `LinkSimLink`.
     pub fn generic_links(&self) -> impl Iterator<Item = Link> + '_ {
-        iter::once(&self.bottleneck)
-            .chain(self.other_links.iter())
-            .map(|l| Link::new(l.a, l.b, l.available_bandwidth, l.delay))
+        self.links()
+            .map(|l| Link::new(l.from, l.to, l.available_bandwidth, l.delay))
     }
 
     /// Creates a copy of a `LinkSimSpec` in which all node IDs are contiguous and returns the
@@ -76,16 +85,16 @@ impl LinkSimSpec {
         (
             Self {
                 bottleneck: LinkSimLink {
-                    a: *old2new.get(&self.bottleneck.a).unwrap(),
-                    b: *old2new.get(&self.bottleneck.b).unwrap(),
+                    from: *old2new.get(&self.bottleneck.from).unwrap(),
+                    to: *old2new.get(&self.bottleneck.to).unwrap(),
                     ..self.bottleneck
                 },
                 other_links: self
                     .other_links
                     .iter()
                     .map(|&l| LinkSimLink {
-                        a: *old2new.get(&l.a).unwrap(),
-                        b: *old2new.get(&l.b).unwrap(),
+                        from: *old2new.get(&l.from).unwrap(),
+                        to: *old2new.get(&l.to).unwrap(),
                         ..l
                     })
                     .collect::<Vec<_>>(),
@@ -110,64 +119,6 @@ impl LinkSimSpec {
             old2new,
         )
     }
-
-    /// Returns a [`LinkSimTopo`] corresponding to this link-level simulation.
-    pub fn topo(&self) -> Result<LinkSimTopo, TopologyError> {
-        LinkSimTopo::new(self)
-    }
-}
-
-/// Link-level topology
-#[derive(Debug)]
-pub struct LinkSimTopo {
-    /// The link-level topology
-    topology: Topology<BasicChannel>,
-    /// The routing table
-    routes: Routes,
-    /// Mapping of external `NodeId`s to internal ones.
-    old2new: FxHashMap<NodeId, NodeId>,
-}
-
-impl LinkSimTopo {
-    /// Creates a new link level topology.
-    pub fn new(spec: &LinkSimSpec) -> Result<Self, TopologyError> {
-        let (spec, old2new) = spec.contiguousify();
-        let nodes = spec.generic_nodes().collect::<Vec<_>>();
-        let links = spec.generic_links().collect::<Vec<_>>();
-        let topology = Topology::new(&nodes, &links)?;
-        let routes = Routes::new(&topology);
-        Ok(Self {
-            topology,
-            routes,
-            old2new,
-        })
-    }
-
-    /// Returns `(delay, bandwidth)` pairs from `src` to `dst`, using `choose` to select a path
-    /// when there are multiple options.
-    pub fn path_info(
-        &self,
-        src: NodeId,
-        dst: NodeId,
-        choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
-    ) -> impl Iterator<Item = (Nanosecs, BitsPerSec)> + '_ {
-        let src = *self.old2new.get(&src).unwrap();
-        let dst = *self.old2new.get(&dst).unwrap();
-        self.edge_indices_between(src, dst, choose).map(|eidx| {
-            let chan = &self.topology().graph[eidx];
-            (chan.delay, chan.bandwidth)
-        })
-    }
-}
-
-impl TraversableNetwork<BasicChannel> for LinkSimTopo {
-    fn topology(&self) -> &Topology<BasicChannel> {
-        &self.topology
-    }
-
-    fn routes(&self) -> &Routes {
-        &self.routes
-    }
 }
 
 /// A descriptor for a link-level simulation.
@@ -183,6 +134,59 @@ pub struct LinkSimDesc {
     pub flows: Vec<FlowId>,
 }
 
+/// A link-level topology.
+#[derive(Debug)]
+pub struct LinkSimTopo {
+    graph: DiGraph<LinkSimNode, LinkSimLink>,
+    nid2nix: FxHashMap<NodeId, NodeIndex>,
+}
+
+impl LinkSimTopo {
+    /// Creates a new link level topology.
+    pub fn new(spec: &LinkSimSpec) -> Self {
+        let mut graph = DiGraph::new();
+        let mut nid2nix = FxHashMap::default();
+        for n in spec.nodes() {
+            let nix = graph.add_node(n);
+            nid2nix.insert(n.id, nix);
+        }
+        for l in spec.links() {
+            let _ = graph.add_edge(
+                *nid2nix.get(&l.from).unwrap(),
+                *nid2nix.get(&l.to).unwrap(),
+                l,
+            );
+        }
+        Self { graph, nid2nix }
+    }
+
+    /// Returns a path of `LinkSimLink`s from `src` to `dst.
+    pub fn path(&self, src: NodeId, dst: NodeId) -> Option<Vec<LinkSimLink>> {
+        let mut path = Vec::new();
+        let mut cur = src;
+        while cur != dst {
+            let nix = *self.nid2nix.get(&cur).unwrap();
+            let l = match self
+                .graph
+                .edges_directed(nix, Direction::Outgoing)
+                .find(|l| l.weight().to == dst)
+            {
+                Some(l) => *l.weight(),
+                None => {
+                    let eix = match self.graph.first_edge(nix, Direction::Outgoing) {
+                        Some(eidx) => eidx,
+                        None => return None,
+                    };
+                    self.graph[eix]
+                }
+            };
+            path.push(l);
+            cur = l.to;
+        }
+        Some(path)
+    }
+}
+
 /// A node in a link-level simulation.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct LinkSimNode {
@@ -196,9 +200,9 @@ pub struct LinkSimNode {
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct LinkSimLink {
     /// The first endpoint.
-    pub a: NodeId,
+    pub from: NodeId,
     /// The second endpoint.
-    pub b: NodeId,
+    pub to: NodeId,
     /// The total link bandwidth.
     pub total_bandwidth: BitsPerSec,
     /// The total bandwidth optionally adjusted for the rate of ACKs

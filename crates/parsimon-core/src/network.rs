@@ -399,8 +399,8 @@ impl SimNetwork {
                 let path = self.path(src, bsrc, |choices| choices.first());
                 let &(eidx, chan) = path.iter().next().unwrap();
                 let link = LinkSimLink {
-                    a: src,
-                    b: bsrc,
+                    from: src,
+                    to: bsrc,
                     total_bandwidth: chan.bandwidth(),
                     available_bandwidth: chan.bandwidth() - self.ack_rate_of(eidx).unwrap(),
                     delay: path.delay(),
@@ -420,8 +420,8 @@ impl SimNetwork {
                 let path = self.path(bdst, dst, |choices| choices.first());
                 let bandwidth = path.bandwidths().min().unwrap().scale_by(10.0);
                 let link = LinkSimLink {
-                    a: bdst,
-                    b: dst,
+                    from: bdst,
+                    to: dst,
                     total_bandwidth: bandwidth,
                     available_bandwidth: bandwidth,
                     delay: path.delay(),
@@ -431,8 +431,8 @@ impl SimNetwork {
         }
         // Now include the bottleneck channel
         let bottleneck = LinkSimLink {
-            a: bsrc,
-            b: bdst,
+            from: bsrc,
+            to: bdst,
             total_bandwidth: chan.bandwidth(),
             available_bandwidth: chan.bandwidth() - self.ack_rate_of(edge).unwrap(),
             delay: chan.delay(),

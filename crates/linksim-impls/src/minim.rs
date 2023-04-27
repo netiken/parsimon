@@ -4,7 +4,7 @@ use std::{fs, io::Write, path::PathBuf, time::Instant};
 
 use parsimon_core::{
     constants::{SZ_PKTHDR, SZ_PKTMAX},
-    linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec},
+    linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
     network::{FctRecord, FlowId},
     units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
 };
@@ -66,17 +66,19 @@ impl MinimLink {
                 _ => None,
             })
             .collect::<FxHashSet<_>>();
-        let topo = spec.topo()?;
+        let topo = LinkSimTopo::new(&spec);
 
         let srcs = src_ids
             .iter()
             .map(|&src| {
-                let (delay2btl, link_rate) = if src == spec.bottleneck.a {
+                let (delay2btl, link_rate) = if src == spec.bottleneck.from {
                     (Nanosecs::ZERO, spec.bottleneck.available_bandwidth)
                 } else {
-                    let (delays, bandwidths): (Vec<_>, Vec<_>) =
-                        topo.path_info(src, spec.bottleneck.a, |c| c.first()).unzip();
-                    (delays.iter().copied().sum(), *bandwidths.first().unwrap())
+                    let path = topo.path(src, spec.bottleneck.from).unwrap();
+                    (
+                        path.iter().map(|l| l.delay).sum(),
+                        path[0].available_bandwidth,
+                    )
                 };
                 minim::SourceDesc::builder()
                     .id(minim::SourceId::new(src.inner()))
@@ -96,8 +98,10 @@ impl MinimLink {
                     .or_insert_with(FxHashMap::default)
                     .entry(f.dst)
                     .or_insert_with(|| {
-                        topo.path_info(f.src, f.dst, |c| c.first())
-                            .map(|(delay, _)| delay)
+                        topo.path(f.src, f.dst)
+                            .unwrap()
+                            .iter()
+                            .map(|l| l.delay)
                             .sum::<Nanosecs>()
                     });
                 minim::FlowDesc {
@@ -117,7 +121,7 @@ impl MinimLink {
                 .scale_by(3_f64)
                 .into_u64(),
         );
-        let bandwidth = if src_ids.contains(&spec.bottleneck.a) {
+        let bandwidth = if src_ids.contains(&spec.bottleneck.from) {
             spec.bottleneck.total_bandwidth.scale_by(100_f64)
         } else {
             spec.bottleneck.available_bandwidth

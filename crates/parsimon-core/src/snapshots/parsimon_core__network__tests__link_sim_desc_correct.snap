@@ -5,19 +5,19 @@ expression: check
 ? - 0
   - 4
 : bottleneck:
-    a: 0
-    b: 4
+    from: 0
+    to: 4
     total_bandwidth: 10000000000
     available_bandwidth: 10000000000
     delay: 1000
   other_links:
-    - a: 4
-      b: 1
+    - from: 4
+      to: 1
       total_bandwidth: 100000000000
       available_bandwidth: 100000000000
       delay: 1000
-    - a: 4
-      b: 2
+    - from: 4
+      to: 2
       total_bandwidth: 100000000000
       available_bandwidth: 100000000000
       delay: 3000
@@ -36,14 +36,14 @@ expression: check
 ? - 4
   - 1
 : bottleneck:
-    a: 4
-    b: 1
+    from: 4
+    to: 1
     total_bandwidth: 10000000000
     available_bandwidth: 10000000000
     delay: 1000
   other_links:
-    - a: 0
-      b: 4
+    - from: 0
+      to: 4
       total_bandwidth: 10000000000
       available_bandwidth: 10000000000
       delay: 1000
@@ -59,19 +59,19 @@ expression: check
 ? - 4
   - 6
 : bottleneck:
-    a: 4
-    b: 6
+    from: 4
+    to: 6
     total_bandwidth: 10000000000
     available_bandwidth: 10000000000
     delay: 1000
   other_links:
-    - a: 0
-      b: 4
+    - from: 0
+      to: 4
       total_bandwidth: 10000000000
       available_bandwidth: 10000000000
       delay: 1000
-    - a: 6
-      b: 2
+    - from: 6
+      to: 2
       total_bandwidth: 100000000000
       available_bandwidth: 100000000000
       delay: 2000
@@ -89,14 +89,14 @@ expression: check
 ? - 5
   - 2
 : bottleneck:
-    a: 5
-    b: 2
+    from: 5
+    to: 2
     total_bandwidth: 10000000000
     available_bandwidth: 10000000000
     delay: 1000
   other_links:
-    - a: 0
-      b: 5
+    - from: 0
+      to: 5
       total_bandwidth: 10000000000
       available_bandwidth: 10000000000
       delay: 3000
@@ -112,19 +112,19 @@ expression: check
 ? - 6
   - 5
 : bottleneck:
-    a: 6
-    b: 5
+    from: 6
+    to: 5
     total_bandwidth: 10000000000
     available_bandwidth: 10000000000
     delay: 1000
   other_links:
-    - a: 0
-      b: 6
+    - from: 0
+      to: 6
       total_bandwidth: 10000000000
       available_bandwidth: 10000000000
       delay: 2000
-    - a: 5
-      b: 2
+    - from: 5
+      to: 2
       total_bandwidth: 100000000000
       available_bandwidth: 100000000000
       delay: 1000

@@ -82,7 +82,7 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
                 nodes: desc.nodes,
                 flows,
             };
-            let (bsrc, bdst) = (spec.bottleneck.a, spec.bottleneck.b);
+            let (bsrc, bdst) = (spec.bottleneck.from, spec.bottleneck.to);
             let cfg = linksim.build_config(spec)?;
             let check = MinimCheck::from_config(&cfg);
             Ok(((bsrc, bdst), check))
