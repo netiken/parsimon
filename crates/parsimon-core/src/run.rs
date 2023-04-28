@@ -3,11 +3,12 @@
 use crate::cluster::ClusteringAlgo;
 use crate::linksim::LinkSim;
 use crate::network::{DelayNetwork, SimNetworkError};
+use crate::opts::SimOpts;
 use crate::spec::{Spec, SpecError};
 
 /// The core `Parsimon` routine. This transforms a specification into a network of delay
-/// distributions, using a provided [link simulator](LinkSim) and [clustering algorithm](ClusteringAlgo).
-pub fn run<S, C>(spec: Spec, linksim: S, clusterer: C) -> Result<DelayNetwork, Error>
+/// distributions, using a provided [link simulation options](SimOpts) and [clustering algorithm](ClusteringAlgo).
+pub fn run<S, C>(spec: Spec, opts: SimOpts<S>, clusterer: C) -> Result<DelayNetwork, Error>
 where
     S: LinkSim + Sync,
     C: ClusteringAlgo,
@@ -16,7 +17,7 @@ where
     let flows = spec.collect_flows();
     let mut sims = spec.network.into_simulations(flows);
     sims.cluster(clusterer);
-    let delays = sims.into_delays(linksim)?;
+    let delays = sims.into_delays(opts)?;
     Ok(delays)
 }
 

@@ -24,10 +24,11 @@ pub use types::*;
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
     constants::SZ_PKTMAX,
-    edist::{BucketOpts, EDistError},
+    edist::EDistError,
     linksim::{
         LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
     },
+    opts::SimOpts,
     units::{BitsPerSec, Bytes, Nanosecs},
     utils,
 };
@@ -166,14 +167,18 @@ impl SimNetwork {
 
     /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
     /// processing the results into empirical distributions bucketed by flow size.
-    ///
-    /// Bucketing is done with default [`BucketOpts`] parameters `x = 2` and `b = 100`.
-    pub fn into_delays<S>(self, sim: S) -> Result<DelayNetwork, SimNetworkError>
+    pub fn into_delays<S>(self, opts: SimOpts<S>) -> Result<DelayNetwork, SimNetworkError>
     where
         S: LinkSim + Sync,
     {
         let mut topology = Topology::new_edist(&self.topology);
-        let eidx2data = self.simulate_clusters(sim)?;
+
+        let eidx2data = if opts.is_local() {
+            self.simulate_clusters_locally(opts.link_sim)?
+        } else {
+            unimplemented!("distributed simulations not yet implemented")
+        };
+
         // Every channel gets filled with delay distributions. All channels in the same cluster get
         // filled using the cluster representative's data.
         for cluster in &self.clusters {
@@ -186,7 +191,7 @@ impl SimNetwork {
                         data,
                         |rec| rec.size,
                         |rec| rec.pktnorm_delay(),
-                        BucketOpts::default(),
+                        opts.bucket_opts,
                     )?;
                 }
             }
@@ -197,44 +202,7 @@ impl SimNetwork {
         })
     }
 
-    /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
-    /// processing the results into empirical distributions bucketed by flow size.
-    ///
-    /// Bucketing is done using the provided [`BucketOpts`] parameters.
-    pub fn into_delays_with_opts<S>(
-        self,
-        sim: S,
-        opts: BucketOpts,
-    ) -> Result<DelayNetwork, SimNetworkError>
-    where
-        S: LinkSim + Sync,
-    {
-        let mut topology = Topology::new_edist(&self.topology);
-        let eidx2data = self.simulate_clusters(sim)?;
-        // Every channel gets filled with delay distributions. All channels in the same cluster get
-        // filled using the cluster representative's data.
-        for cluster in &self.clusters {
-            let representative = cluster.representative();
-            for &member in cluster.members() {
-                // Fill channel with packet-normalized delay predictions
-                let data = eidx2data.get(&representative).unwrap();
-                if !data.is_empty() {
-                    topology.graph[member].dists.fill(
-                        data,
-                        |rec| rec.size,
-                        |rec| rec.pktnorm_delay(),
-                        opts,
-                    )?;
-                }
-            }
-        }
-        Ok(DelayNetwork {
-            topology,
-            routes: self.routes,
-        })
-    }
-
-    pub(crate) fn simulate_clusters<S>(
+    pub(crate) fn simulate_clusters_locally<S>(
         &self,
         sim: S,
     ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>

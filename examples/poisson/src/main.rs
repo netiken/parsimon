@@ -3,6 +3,7 @@ use linksim_impls::minim::MinimLink;
 use parsimon_core::cluster::DefaultClustering;
 use parsimon_core::network::types::{Flow, FlowId, Link, Node, NodeId};
 use parsimon_core::network::DelayNetwork;
+use parsimon_core::opts::SimOpts;
 use parsimon_core::run::run;
 use parsimon_core::spec::Spec;
 use parsimon_core::units::{BitsPerSec, Bytes, Gbps, Mbps, Nanosecs};
@@ -53,8 +54,9 @@ fn main() -> anyhow::Result<()> {
         .dctcp_gain(DCTCP_GAIN)
         .dctcp_ai(DCTCP_AI)
         .build();
+    let opts = SimOpts::builder().link_sim(minim).build();
 
-    let delay_network: DelayNetwork = run(spec, minim, DefaultClustering)?;
+    let delay_network: DelayNetwork = run(spec, opts, DefaultClustering)?;
 
     // feed all flows back into delay network
     let mut ns_predictions = flows
