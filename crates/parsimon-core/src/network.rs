@@ -9,8 +9,9 @@ pub(crate) mod routing;
 pub(crate) mod topology;
 pub mod types;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, net::SocketAddr};
 
+use chrono::Utc;
 use itertools::Itertools;
 use petgraph::graph::NodeIndex;
 use rand::prelude::*;
@@ -24,6 +25,7 @@ pub use types::*;
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
     constants::SZ_PKTMAX,
+    distribute::{self, WorkerChunk, WorkerParams},
     edist::EDistError,
     linksim::{
         LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
@@ -176,7 +178,7 @@ impl SimNetwork {
         let eidx2data = if opts.is_local() {
             self.simulate_clusters_locally(opts.link_sim)?
         } else {
-            unimplemented!("distributed simulations not yet implemented")
+            self.simulate_clusters(opts.link_sim, &opts.workers)?
         };
 
         // Every channel gets filled with delay distributions. All channels in the same cluster get
@@ -221,6 +223,7 @@ impl SimNetwork {
                         .map(|id| self.flows.get(id).unwrap().to_owned())
                         .collect::<Vec<_>>();
                     let spec = LinkSimSpec {
+                        edge: desc.edge,
                         bottleneck: desc.bottleneck,
                         other_links: desc.other_links,
                         nodes: desc.nodes,
@@ -234,6 +237,53 @@ impl SimNetwork {
             Result::<(), SimNetworkError>::Ok(())
         })?;
         Ok(r.iter().collect())
+    }
+
+    pub(crate) fn simulate_clusters<S>(
+        &self,
+        sim: S,
+        workers: &[SocketAddr],
+    ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
+    where
+        S: LinkSim + Sync,
+    {
+        let chunk_size = self.clusters.len() / workers.len();
+        let assignments =
+            workers
+                .iter()
+                .zip(self.clusters.chunks(chunk_size))
+                .map(|(&worker, clusters)| {
+                    let descs = clusters
+                        .iter()
+                        .filter_map(|c| self.link_sim_desc(c.representative()))
+                        .collect::<Vec<_>>();
+                    let flows = descs
+                        .iter()
+                        .flat_map(|d| d.flows.iter())
+                        .unique()
+                        .map(|id| self.flows.get(id).unwrap().to_owned())
+                        .collect::<Vec<_>>();
+                    let chunk = WorkerChunk { descs, flows };
+                    let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+                    let params = WorkerParams {
+                        link_sim: sim.name(),
+                        chunk_path: format!("/tmp/pmn_input_{}.txt", timestamp).into(),
+                    };
+                    (worker, chunk, params)
+                });
+        let rt = tokio::runtime::Runtime::new()?;
+        let results = rt.block_on(async {
+            let mut results = Vec::new();
+            for (worker, chunk, params) in assignments {
+                let mut r = distribute::work_remote(worker, params, chunk).await?;
+                results.append(&mut r);
+            }
+            Result::<_, SimNetworkError>::Ok(results)
+        })?;
+        Ok(results
+            .into_iter()
+            .map(|(edge, records)| (EdgeIndex::new(edge), records))
+            .collect())
     }
 
     /// Returns the flows traversing a given edge, or `None` if the edge doesn't exist.
@@ -407,6 +457,7 @@ impl SimNetwork {
         };
 
         Some(LinkSimDesc {
+            edge: edge.index(),
             bottleneck,
             other_links,
             nodes,
@@ -467,6 +518,26 @@ pub enum SimNetworkError {
     /// Error constructing empirical distribution.
     #[error("Failed to construct empirical distribution")]
     EDist(#[from] EDistError),
+
+    /// OpenSSH error.
+    #[error("OpenSSH error")]
+    OpenSSH(#[from] openssh::Error),
+
+    /// SFTP client error.
+    #[error("SFTP client error")]
+    Sftp(#[from] openssh_sftp_client::Error),
+
+    /// MessagePack encode error.
+    #[error("MessagePack encode error")]
+    RmpEncode(#[from] rmp_serde::encode::Error),
+
+    /// MessagePack decode error.
+    #[error("MessagePack decode error")]
+    RmpDecode(#[from] rmp_serde::decode::Error),
+
+    /// Tokio IO error.
+    #[error("Tokio IO error.")]
+    Tokio(#[from] tokio::io::Error),
 }
 
 /// A `DelayNetwork` is a network in which all edges contain empirical distributions of FCT delay

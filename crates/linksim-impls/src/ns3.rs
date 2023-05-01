@@ -24,6 +24,10 @@ pub struct Ns3Link {
 }
 
 impl LinkSim for Ns3Link {
+    fn name(&self) -> String {
+        "ns3".into()
+    }
+
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
         let (bsrc, bdst) = (spec.bottleneck.from, spec.bottleneck.to);
         let (spec, _) = spec.contiguousify();

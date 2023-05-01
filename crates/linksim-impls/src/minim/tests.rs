@@ -77,6 +77,7 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
                 .map(|id| id2flow.get(id).unwrap().to_owned())
                 .collect::<Vec<_>>();
             let spec = LinkSimSpec {
+                edge: desc.edge,
                 bottleneck: desc.bottleneck,
                 other_links: desc.other_links,
                 nodes: desc.nodes,

@@ -19,11 +19,18 @@ pub type LinkSimResult = Result<Vec<FctRecord>, LinkSimError>;
 
 /// An interface for link simulators.
 pub trait LinkSim {
+    /// Returns the name of the link level simulator.
+    fn name(&self) -> String;
+
     /// Given [`LinkSimSpec`], simulate it and return a collection of FCT records.
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult;
 }
 
 impl<T: LinkSim> LinkSim for &T {
+    fn name(&self) -> String {
+        (*self).name()
+    }
+
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
         (*self).simulate(spec)
     }
@@ -32,6 +39,8 @@ impl<T: LinkSim> LinkSim for &T {
 /// A full specification for a link-level simulation.
 #[derive(Debug)]
 pub struct LinkSimSpec {
+    /// The edge index of the isolated link.
+    pub edge: usize,
     /// The bottleneck.
     pub bottleneck: LinkSimLink,
     /// The links other than the bottleneck.
@@ -84,6 +93,7 @@ impl LinkSimSpec {
             .collect::<FxHashMap<_, _>>();
         (
             Self {
+                edge: self.edge,
                 bottleneck: LinkSimLink {
                     from: *old2new.get(&self.bottleneck.from).unwrap(),
                     to: *old2new.get(&self.bottleneck.to).unwrap(),
@@ -122,8 +132,10 @@ impl LinkSimSpec {
 }
 
 /// A descriptor for a link-level simulation.
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LinkSimDesc {
+    /// The edge index of the isolated link.
+    pub edge: usize,
     /// The bottleneck.
     pub bottleneck: LinkSimLink,
     /// The links other than the bottleneck.

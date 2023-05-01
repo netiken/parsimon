@@ -7,6 +7,7 @@ version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+chrono = "0.4.24"
 crossbeam-channel = "0.5.6"
 delegate = "0.8.0"
 derive-new = { workspace = true }
@@ -15,13 +16,17 @@ itertools = "0.10.4"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
 num_cpus = "1.13.1"
+openssh = { version = "0.9.9", features = ["native-mux"] }
+openssh-sftp-client = "0.12.2"
 ordered-float = "3.1.0"
 petgraph = { workspace = true }
 rand = "0.8.5"
 rayon = { workspace = true }
+rmp-serde = "1.1.1"
 rustc-hash = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+tokio = { version = "1.28.0", features = ["full"] }
 typed-builder = { workspace = true }
 
 [dev-dependencies]

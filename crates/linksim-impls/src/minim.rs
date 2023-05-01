@@ -25,6 +25,10 @@ pub struct MinimLink {
 }
 
 impl LinkSim for MinimLink {
+    fn name(&self) -> String {
+        "minim".into()
+    }
+
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
         let cfg = self.build_config(spec)?;
         let start = Instant::now();

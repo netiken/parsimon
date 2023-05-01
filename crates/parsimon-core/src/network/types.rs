@@ -271,7 +271,7 @@ pub struct Flow {
 }
 
 /// An `FctRecord` records the flow completion time of a particular flow.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct FctRecord {
     /// The flow ID.
     pub id: FlowId,
