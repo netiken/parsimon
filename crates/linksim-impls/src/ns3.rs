@@ -9,7 +9,7 @@ use parsimon_core::{
 };
 
 /// An ns-3 link simulation.
-#[derive(Debug, typed_builder::TypedBuilder)]
+#[derive(Debug, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct Ns3Link {
     #[builder(setter(into))]
     root_dir: PathBuf,

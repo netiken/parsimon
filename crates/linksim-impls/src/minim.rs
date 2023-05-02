@@ -11,7 +11,7 @@ use parsimon_core::{
 use rustc_hash::{FxHashMap, FxHashSet};
 
 /// An Minim link simulation.
-#[derive(Debug, typed_builder::TypedBuilder)]
+#[derive(Debug, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
     #[builder(setter(into))]
     window: Bytes,

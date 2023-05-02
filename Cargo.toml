@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/parsimon-core",
+    "crates/parsimon-worker",
     "crates/parsimon-utils",
     "crates/linksim-impls",
     "crates/clustering-impls",

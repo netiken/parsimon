@@ -18,22 +18,12 @@ use crate::{
 pub type LinkSimResult = Result<Vec<FctRecord>, LinkSimError>;
 
 /// An interface for link simulators.
-pub trait LinkSim {
+pub trait LinkSim: serde::Serialize + serde::de::DeserializeOwned {
     /// Returns the name of the link level simulator.
     fn name(&self) -> String;
 
     /// Given [`LinkSimSpec`], simulate it and return a collection of FCT records.
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult;
-}
-
-impl<T: LinkSim> LinkSim for &T {
-    fn name(&self) -> String {
-        (*self).name()
-    }
-
-    fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
-        (*self).simulate(spec)
-    }
 }
 
 /// A full specification for a link-level simulation.

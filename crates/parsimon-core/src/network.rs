@@ -248,6 +248,7 @@ impl SimNetwork {
         S: LinkSim + Sync,
     {
         let chunk_size = self.clusters.len() / workers.len();
+        let sim = (sim.name(), serde_json::to_string(&sim)?);
         let assignments =
             workers
                 .iter()
@@ -266,7 +267,7 @@ impl SimNetwork {
                     let chunk = WorkerChunk { descs, flows };
                     let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
                     let params = WorkerParams {
-                        link_sim: sim.name(),
+                        link_sim: sim.clone(),
                         chunk_path: format!("/tmp/pmn_input_{}.txt", timestamp).into(),
                     };
                     (worker, chunk, params)
@@ -534,6 +535,10 @@ pub enum SimNetworkError {
     /// MessagePack decode error.
     #[error("MessagePack decode error")]
     RmpDecode(#[from] rmp_serde::decode::Error),
+
+    /// JSON serialization/deserialization error.
+    #[error("JSON error")]
+    Json(#[from] serde_json::Error),
 
     /// Tokio IO error.
     #[error("Tokio IO error.")]

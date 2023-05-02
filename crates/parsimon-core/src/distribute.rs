@@ -5,9 +5,6 @@ use std::{net::SocketAddr, path::PathBuf};
 
 use openssh::{KnownHosts, Session, Stdio};
 use openssh_sftp_client::Sftp;
-use rmp_serde::{Deserializer, Serializer};
-use serde::Deserialize;
-use serde::Serialize;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -21,8 +18,8 @@ use crate::{
 /// Input parameters for worker nodes.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct WorkerParams {
-    /// The name of the link simulator.
-    pub link_sim: String,
+    /// The name and serialized version of the link simulator.
+    pub link_sim: (String, String),
     /// The file path of the workload chunk.
     pub chunk_path: PathBuf,
 }
@@ -44,21 +41,18 @@ pub(crate) async fn work_remote(
     params: WorkerParams,
     chunk: WorkerChunk,
 ) -> Result<WorkerOut, SimNetworkError> {
-    // Send the chunk first
+    // Send the chunk first.
     send_chunk(worker, chunk, &params.chunk_path).await?;
 
-    // Serialize the params.
-    let mut buf = Vec::new();
-    params.serialize(&mut Serializer::new(&mut buf))?;
-
-    // Now send the params and get the response.
+    // Serialize the params and send them.
+    let buf = rmp_serde::encode::to_vec(&params)?;
     let mut stream = TcpStream::connect(worker).await?;
     stream.write_all(&buf).await?;
 
     // Read response from the remote host.
     let mut buf = Vec::new();
     let _ = stream.read_to_end(&mut buf).await?;
-    let result = <WorkerOut>::deserialize(&mut Deserializer::new(&buf[..]))?;
+    let result = rmp_serde::decode::from_slice(&buf)?;
 
     // Close the connection.
     stream.shutdown().await?;
@@ -87,8 +81,7 @@ async fn send_chunk(
     .await?;
 
     // Serialize the worker chunk.
-    let mut buf = Vec::new();
-    chunk.serialize(&mut Serializer::new(&mut buf))?;
+    let buf = rmp_serde::encode::to_vec(&chunk)?;
 
     // Write it to the remote host.
     let mut file = sftp.create(path).await?;
