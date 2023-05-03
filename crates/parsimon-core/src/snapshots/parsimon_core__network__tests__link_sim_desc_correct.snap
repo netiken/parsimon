@@ -4,7 +4,8 @@ expression: check
 ---
 ? - 0
   - 4
-: bottleneck:
+: edge: 0
+  bottleneck:
     from: 0
     to: 4
     total_bandwidth: 10000000000
@@ -24,18 +25,19 @@ expression: check
   nodes:
     - id: 0
       kind: Source
+    - id: 1
+      kind: Destination
     - id: 2
       kind: Destination
     - id: 4
       kind: Switch
-    - id: 1
-      kind: Destination
   flows:
     - 0
     - 1
 ? - 4
   - 1
-: bottleneck:
+: edge: 3
+  bottleneck:
     from: 4
     to: 1
     total_bandwidth: 10000000000
@@ -50,15 +52,16 @@ expression: check
   nodes:
     - id: 0
       kind: Source
-    - id: 4
-      kind: Switch
     - id: 1
       kind: Destination
+    - id: 4
+      kind: Switch
   flows:
     - 0
 ? - 4
   - 6
-: bottleneck:
+: edge: 8
+  bottleneck:
     from: 4
     to: 6
     total_bandwidth: 10000000000
@@ -88,7 +91,8 @@ expression: check
     - 1
 ? - 5
   - 2
-: bottleneck:
+: edge: 5
+  bottleneck:
     from: 5
     to: 2
     total_bandwidth: 10000000000
@@ -103,15 +107,16 @@ expression: check
   nodes:
     - id: 0
       kind: Source
-    - id: 5
-      kind: Switch
     - id: 2
       kind: Destination
+    - id: 5
+      kind: Switch
   flows:
     - 1
 ? - 6
   - 5
-: bottleneck:
+: edge: 13
+  bottleneck:
     from: 6
     to: 5
     total_bandwidth: 10000000000
@@ -131,11 +136,11 @@ expression: check
   nodes:
     - id: 0
       kind: Source
-    - id: 5
-      kind: Switch
     - id: 2
       kind: Destination
     - id: 6
+      kind: Switch
+    - id: 5
       kind: Switch
   flows:
     - 1

@@ -3,7 +3,7 @@
 
 use std::{
     fs::File,
-    io::Write,
+    io::{BufReader, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -20,6 +20,7 @@ use parsimon_core::{
     network::FctRecord,
 };
 use rayon::prelude::*;
+use rmp_serde::decode;
 use rustc_hash::FxHashMap;
 
 /// Starts a worker on a port.
@@ -51,7 +52,9 @@ fn serve(running: Arc<AtomicBool>, port: u16) -> anyhow::Result<()> {
     while running.load(Ordering::SeqCst) {
         match listener.accept() {
             Ok((stream, _addr)) => {
-                thread::spawn(move || handle_client(stream));
+                thread::spawn(move || {
+                    handle_client(stream).unwrap();
+                });
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -63,8 +66,8 @@ fn serve(running: Arc<AtomicBool>, port: u16) -> anyhow::Result<()> {
 }
 
 fn handle_client(mut stream: TcpStream) -> anyhow::Result<()> {
-    let params: WorkerParams = rmp_serde::decode::from_read(&stream)?;
-    let chunk: WorkerChunk = rmp_serde::decode::from_read(File::open(params.chunk_path)?)?;
+    let params: WorkerParams = decode::from_read(BufReader::new(&stream))?;
+    let chunk: WorkerChunk = decode::from_read(BufReader::new(File::open(params.chunk_path)?))?;
     let sim_name = &params.link_sim.0[..];
     let sim_ser = &params.link_sim.1[..];
     let results = match sim_name {

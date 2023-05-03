@@ -18,7 +18,6 @@ use rand::prelude::*;
 use rayon::prelude::*;
 
 pub use petgraph::graph::EdgeIndex;
-use rustc_hash::FxHashSet;
 pub use topology::TopologyError;
 pub use types::*;
 
@@ -187,7 +186,10 @@ impl SimNetwork {
             let representative = cluster.representative();
             for &member in cluster.members() {
                 // Fill channel with packet-normalized delay predictions
-                let data = eidx2data.get(&representative).unwrap();
+                let data = match eidx2data.get(&representative) {
+                    Some(data) => &data[..],
+                    None => &[],
+                };
                 if !data.is_empty() {
                     topology.graph[member].dists.fill(
                         data,
@@ -249,35 +251,41 @@ impl SimNetwork {
     {
         let chunk_size = self.clusters.len() / workers.len();
         let sim = (sim.name(), serde_json::to_string(&sim)?);
-        let assignments =
-            workers
-                .iter()
-                .zip(self.clusters.chunks(chunk_size))
-                .map(|(&worker, clusters)| {
-                    let descs = clusters
-                        .iter()
-                        .filter_map(|c| self.link_sim_desc(c.representative()))
-                        .collect::<Vec<_>>();
-                    let flows = descs
-                        .iter()
-                        .flat_map(|d| d.flows.iter())
-                        .unique()
-                        .map(|id| self.flows.get(id).unwrap().to_owned())
-                        .collect::<Vec<_>>();
-                    let chunk = WorkerChunk { descs, flows };
-                    let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
-                    let params = WorkerParams {
-                        link_sim: sim.clone(),
-                        chunk_path: format!("/tmp/pmn_input_{}.txt", timestamp).into(),
-                    };
-                    (worker, chunk, params)
-                });
+        let assignments = workers
+            .iter()
+            .zip(self.clusters.chunks(chunk_size))
+            .par_bridge()
+            .map(|(&worker, clusters)| {
+                let descs = clusters
+                    .par_iter()
+                    .filter_map(|c| self.link_sim_desc(c.representative()))
+                    .collect::<Vec<_>>();
+                let flows = descs
+                    .iter()
+                    .flat_map(|d| d.flows.iter())
+                    .unique()
+                    .map(|id| self.flows.get(id).unwrap().to_owned())
+                    .collect::<Vec<_>>();
+                let chunk = WorkerChunk { descs, flows };
+                let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+                let params = WorkerParams {
+                    link_sim: sim.clone(),
+                    chunk_path: format!("/tmp/pmn_input_{}.mpk", timestamp).into(),
+                };
+                (worker, chunk, params)
+            })
+            .collect::<Vec<_>>();
         let rt = tokio::runtime::Runtime::new()?;
         let results = rt.block_on(async {
+            let handles = assignments
+                .into_iter()
+                .map(|(worker, chunk, params)| {
+                    tokio::spawn(distribute::work_remote(worker, params, chunk))
+                })
+                .collect::<Vec<_>>();
             let mut results = Vec::new();
-            for (worker, chunk, params) in assignments {
-                let mut r = distribute::work_remote(worker, params, chunk).await?;
-                results.append(&mut r);
+            for handle in handles {
+                results.append(&mut handle.await??);
             }
             Result::<_, SimNetworkError>::Ok(results)
         })?;
@@ -341,8 +349,7 @@ impl SimNetwork {
         let chan = self.edge(eidx)?;
         let flows = self.flows_on(eidx)?;
         let nr_bytes = flows.iter().map(|f| f.size).sum::<Bytes>();
-        let duration = flows.last().map(|f| f.start).unwrap_or_default()
-            - flows.first().map(|f| f.start).unwrap_or_default();
+        let duration = self.duration_of(eidx)?;
         (duration != Nanosecs::ZERO)
             .then(|| {
                 assert!(chan.bandwidth() != BitsPerSec::ZERO);
@@ -367,10 +374,8 @@ impl SimNetwork {
     }
 
     pub(crate) fn duration_of(&self, eidx: EdgeIndex) -> Option<Nanosecs> {
-        let flows = self.flows_on(eidx)?;
-        let duration = flows.last().map(|f| f.start).unwrap_or_default()
-            - flows.first().map(|f| f.start).unwrap_or_default();
-        Some(duration)
+        let chan = self.edge(eidx)?;
+        Some(chan.duration())
     }
 
     /// Returns a link-level descriptor for a given edge.
@@ -391,9 +396,7 @@ impl SimNetwork {
             .iter()
             .chain(dsts.iter())
             .chain([&bsrc, &bdst].into_iter())
-            .collect::<FxHashSet<_>>();
-        let nodes = nodes
-            .into_iter()
+            .unique()
             .map(|&id| {
                 let Node { kind, .. } = self.node(id).unwrap();
                 let kind = match kind {
@@ -542,7 +545,11 @@ pub enum SimNetworkError {
 
     /// Tokio IO error.
     #[error("Tokio IO error.")]
-    Tokio(#[from] tokio::io::Error),
+    TokioIo(#[from] tokio::io::Error),
+
+    /// Tokio join error.
+    #[error("Tokio join error.")]
+    TokioJoin(#[from] tokio::task::JoinError),
 }
 
 /// A `DelayNetwork` is a network in which all edges contain empirical distributions of FCT delay

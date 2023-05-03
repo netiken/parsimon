@@ -10,8 +10,8 @@ use crate::{edist::BucketOpts, linksim::LinkSim};
 pub struct SimOpts<L: LinkSim> {
     /// Link simulator.
     pub link_sim: L,
-    #[builder(default = vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)])]
     /// Worker addresses.
+    #[builder(default = vec![SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)])]
     pub workers: Vec<SocketAddr>,
     /// Bucketing parameters.
     #[builder(default)]

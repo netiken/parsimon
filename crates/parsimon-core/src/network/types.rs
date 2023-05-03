@@ -158,9 +158,12 @@ pub struct FlowChannel {
     pub(crate) delay: Nanosecs,
 
     // `FlowChannel` specific data
+    pub(crate) nr_bytes: Bytes,
     pub(crate) nr_ack_bytes: Bytes,
     pub(crate) flow_srcs: FxHashSet<NodeId>,
     pub(crate) flow_dsts: FxHashSet<NodeId>,
+    pub(crate) flow_start: Nanosecs,
+    pub(crate) flow_end: Nanosecs,
     pub(crate) flows: Vec<FlowId>,
 }
 
@@ -173,9 +176,12 @@ impl FlowChannel {
             dst: chan.dst,
             bandwidth: chan.bandwidth,
             delay: chan.delay,
+            nr_bytes: Bytes::ZERO,
             nr_ack_bytes: Bytes::ZERO,
             flow_srcs: FxHashSet::default(),
             flow_dsts: FxHashSet::default(),
+            flow_start: Nanosecs::MAX,
+            flow_end: Nanosecs::ZERO,
             flows: Vec::new(),
         }
     }
@@ -186,12 +192,23 @@ impl FlowChannel {
     }
 
     pub(crate) fn push_flow(&mut self, flow: &Flow) {
+        self.nr_bytes += flow.size;
         let nr_pkts = (flow.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
         let nr_ack_bytes = SZ_ACK.scale_by(nr_pkts);
         self.nr_ack_bytes += nr_ack_bytes;
         self.flow_srcs.insert(flow.src);
         self.flow_dsts.insert(flow.dst);
+        self.flow_start = std::cmp::min(self.flow_start, flow.start);
+        self.flow_end = std::cmp::max(self.flow_end, flow.start);
         self.flows.push(flow.id);
+    }
+    
+    pub(crate) fn duration(&self) -> Nanosecs {
+        if self.flows.is_empty() {
+            Nanosecs::ZERO
+        } else {
+            self.flow_end - self.flow_start
+        }
     }
 
     delegate::delegate! {
