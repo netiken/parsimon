@@ -256,8 +256,9 @@ impl SimNetwork {
         let assignments = self.assign_work(workers);
         let assignments = assignments
             .iter()
+            .enumerate()
             .par_bridge()
-            .map(|(worker, edges)| {
+            .map(|(i, (worker, edges))| {
                 let descs = edges
                     .par_iter()
                     .filter_map(|&edge| self.link_sim_desc(edge))
@@ -272,7 +273,7 @@ impl SimNetwork {
                 let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
                 let params = WorkerParams {
                     link_sim: sim.clone(),
-                    chunk_path: format!("/tmp/pmn_input_{}.mpk", timestamp).into(),
+                    chunk_path: format!("/tmp/pmn_input_worker_{}_{}.mpk", i, timestamp).into(),
                 };
                 (worker, chunk, params)
             })
@@ -298,6 +299,17 @@ impl SimNetwork {
     }
 
     fn assign_work(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
+        assert!(!workers.is_empty());
+        let chunk_size = self.clusters.len() / workers.len();
+        workers
+            .iter()
+            .zip(self.clusters.chunks(chunk_size))
+            .map(|(&w, cs)| (w, cs.iter().map(|c| c.representative()).collect::<Vec<_>>()))
+            .collect()
+    }
+
+    #[allow(unused)]
+    fn assign_work_greedily(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
         assert!(!workers.is_empty());
         let work = self
             .clusters
