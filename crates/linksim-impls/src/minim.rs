@@ -1,7 +1,5 @@
 //! An interface to the Minim link-level simulator.
 
-use std::{fs, io::Write, path::PathBuf, time::Instant};
-
 use parsimon_core::{
     constants::{SZ_PKTHDR, SZ_PKTMAX},
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
@@ -18,10 +16,6 @@ pub struct MinimLink {
     dctcp_gain: f64,
     #[builder(setter(into))]
     dctcp_ai: BitsPerSec,
-
-    // Stats
-    #[builder(default, setter(strip_option))]
-    elapsed_record: Option<PathBuf>,
 }
 
 impl LinkSim for MinimLink {
@@ -31,17 +25,7 @@ impl LinkSim for MinimLink {
 
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
         let cfg = self.build_config(spec)?;
-        let start = Instant::now();
         let records = minim::run(cfg);
-        let elapsed_millis = start.elapsed().as_millis();
-        if let Some(path) = &self.elapsed_record {
-            let mut file = fs::OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(path)?;
-            file.write_all(format!("{elapsed_millis}\n").as_bytes())?;
-        }
-
         let records = records
             .into_iter()
             .map(|r| FctRecord {
