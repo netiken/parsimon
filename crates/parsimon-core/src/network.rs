@@ -9,7 +9,10 @@ pub(crate) mod routing;
 pub(crate) mod topology;
 pub mod types;
 
-use std::{collections::HashMap, net::SocketAddr};
+use std::{
+    collections::{BTreeSet, HashMap},
+    net::SocketAddr,
+};
 
 use chrono::Utc;
 use itertools::Itertools;
@@ -206,7 +209,7 @@ impl SimNetwork {
         })
     }
 
-    pub(crate) fn simulate_clusters_locally<S>(
+    fn simulate_clusters_locally<S>(
         &self,
         sim: S,
     ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
@@ -241,7 +244,7 @@ impl SimNetwork {
         Ok(r.iter().collect())
     }
 
-    pub(crate) fn simulate_clusters<S>(
+    fn simulate_clusters<S>(
         &self,
         sim: S,
         workers: &[SocketAddr],
@@ -249,16 +252,15 @@ impl SimNetwork {
     where
         S: LinkSim + Sync,
     {
-        let chunk_size = self.clusters.len() / workers.len();
         let sim = (sim.name(), serde_json::to_string(&sim)?);
-        let assignments = workers
+        let assignments = self.assign_work(workers);
+        let assignments = assignments
             .iter()
-            .zip(self.clusters.chunks(chunk_size))
             .par_bridge()
-            .map(|(&worker, clusters)| {
-                let descs = clusters
+            .map(|(worker, edges)| {
+                let descs = edges
                     .par_iter()
-                    .filter_map(|c| self.link_sim_desc(c.representative()))
+                    .filter_map(|&edge| self.link_sim_desc(edge))
                     .collect::<Vec<_>>();
                 let flows = descs
                     .iter()
@@ -279,7 +281,7 @@ impl SimNetwork {
         let results = rt.block_on(async {
             let handles = assignments
                 .into_iter()
-                .map(|(worker, chunk, params)| {
+                .map(|(&worker, chunk, params)| {
                     tokio::spawn(distribute::work_remote(worker, params, chunk))
                 })
                 .collect::<Vec<_>>();
@@ -293,6 +295,30 @@ impl SimNetwork {
             .into_iter()
             .map(|(edge, records)| (EdgeIndex::new(edge), records))
             .collect())
+    }
+
+    fn assign_work(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
+        assert!(!workers.is_empty());
+        let work = self
+            .clusters
+            .iter()
+            .map(|c| {
+                let eidx = c.representative();
+                let chan = self.edge(eidx).unwrap();
+                (eidx, chan.nr_bytes)
+            })
+            .sorted_by(|(_, n1), (_, n2)| Ord::cmp(n2, n1));
+        let mut assignments = workers
+            .iter()
+            .map(|&w| (Bytes::ZERO, Vec::new(), w))
+            .collect::<BTreeSet<_>>();
+        for (edge, nr_bytes) in work {
+            let mut min = assignments.pop_first().unwrap(); // workers not empty
+            min.0 += nr_bytes;
+            min.1.push(edge);
+            assignments.insert(min);
+        }
+        assignments.into_iter().map(|(_, v, w)| (w, v)).collect()
     }
 
     /// Returns the flows traversing a given edge, or `None` if the edge doesn't exist.
