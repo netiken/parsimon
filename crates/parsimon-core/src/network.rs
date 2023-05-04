@@ -253,7 +253,7 @@ impl SimNetwork {
         S: LinkSim + Sync,
     {
         let sim = (sim.name(), serde_json::to_string(&sim)?);
-        let assignments = self.assign_work(workers);
+        let assignments = self.assign_work_randomly(workers);
         let assignments = assignments
             .iter()
             .enumerate()
@@ -298,39 +298,21 @@ impl SimNetwork {
             .collect())
     }
 
-    fn assign_work(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
+    fn assign_work_randomly(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
         assert!(!workers.is_empty());
-        let chunk_size = self.clusters.len() / workers.len();
-        workers
-            .iter()
-            .zip(self.clusters.chunks(chunk_size))
-            .map(|(&w, cs)| (w, cs.iter().map(|c| c.representative()).collect::<Vec<_>>()))
-            .collect()
-    }
-
-    #[allow(unused)]
-    fn assign_work_greedily(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
-        assert!(!workers.is_empty());
-        let work = self
+        let mut edges = self
             .clusters
             .iter()
-            .map(|c| {
-                let eidx = c.representative();
-                let chan = self.edge(eidx).unwrap();
-                (eidx, chan.nr_bytes)
-            })
-            .sorted_by(|(_, n1), (_, n2)| Ord::cmp(n2, n1));
-        let mut assignments = workers
+            .map(|c| c.representative())
+            .collect::<Vec<_>>();
+        let mut rng = StdRng::seed_from_u64(0);
+        edges.shuffle(&mut rng);
+        let chunk_size = edges.len() / workers.len();
+        workers
             .iter()
-            .map(|&w| (Bytes::ZERO, Vec::new(), w))
-            .collect::<BTreeSet<_>>();
-        for (edge, nr_bytes) in work {
-            let mut min = assignments.pop_first().unwrap(); // workers not empty
-            min.0 += nr_bytes;
-            min.1.push(edge);
-            assignments.insert(min);
-        }
-        assignments.into_iter().map(|(_, v, w)| (w, v)).collect()
+            .zip(edges.chunks(chunk_size))
+            .map(|(&w, es)| (w, es.to_vec()))
+            .collect()
     }
 
     /// Returns the flows traversing a given edge, or `None` if the edge doesn't exist.
