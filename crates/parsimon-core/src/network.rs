@@ -9,10 +9,7 @@ pub(crate) mod routing;
 pub(crate) mod topology;
 pub mod types;
 
-use std::{
-    collections::{BTreeSet, HashMap},
-    net::SocketAddr,
-};
+use std::{collections::HashMap, net::SocketAddr};
 
 use chrono::Utc;
 use itertools::Itertools;
