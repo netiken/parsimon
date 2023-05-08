@@ -27,66 +27,6 @@ expression: snapshot
   sz_pktmax: 1000
   sz_pkthdr: 48
   timeout: ~
-? - 1
-  - 4
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 2
-  - 5
-: bandwidth: 9000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 3
-  - 5
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 4
-  - 0
-: bandwidth: 9000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 4
-  - 1
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
 ? - 4
   - 6
 : bandwidth: 10000000000
@@ -105,18 +45,6 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 4
-  - 7
-: bandwidth: 10000000000
-  sources: []
-  flows: []
   window: 18000
   dctcp_marking_threshold: 30000
   dctcp_gain: 0.0625
@@ -149,54 +77,6 @@ expression: snapshot
   sz_pktmax: 1000
   sz_pkthdr: 48
   timeout: ~
-? - 5
-  - 3
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 5
-  - 6
-: bandwidth: 9000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 5
-  - 7
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 6
-  - 4
-: bandwidth: 9000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
 ? - 6
   - 5
 : bandwidth: 10000000000
@@ -215,30 +95,6 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 7
-  - 4
-: bandwidth: 10000000000
-  sources: []
-  flows: []
-  window: 18000
-  dctcp_marking_threshold: 30000
-  dctcp_gain: 0.0625
-  dctcp_ai: 615000000
-  sz_pktmax: 1000
-  sz_pkthdr: 48
-  timeout: ~
-? - 7
-  - 5
-: bandwidth: 10000000000
-  sources: []
-  flows: []
   window: 18000
   dctcp_marking_threshold: 30000
   dctcp_gain: 0.0625

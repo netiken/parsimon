@@ -1,0 +1,147 @@
+---
+source: crates/parsimon-core/src/network.rs
+expression: check
+---
+? - 0
+  - 4
+: edge: 0
+  bottleneck:
+    from: 0
+    to: 4
+    total_bandwidth: 10000000000
+    available_bandwidth: 10000000000
+    delay: 1000
+  other_links:
+    - from: 4
+      to: 1
+      total_bandwidth: 100000000000
+      available_bandwidth: 100000000000
+      delay: 1000
+    - from: 4
+      to: 2
+      total_bandwidth: 100000000000
+      available_bandwidth: 100000000000
+      delay: 3000
+  nodes:
+    - id: 0
+      kind: Source
+    - id: 1
+      kind: Destination
+    - id: 2
+      kind: Destination
+    - id: 4
+      kind: Switch
+  flows:
+    - 0
+    - 1
+? - 4
+  - 1
+: edge: 3
+  bottleneck:
+    from: 4
+    to: 1
+    total_bandwidth: 10000000000
+    available_bandwidth: 10000000000
+    delay: 1000
+  other_links:
+    - from: 0
+      to: 4
+      total_bandwidth: 10000000000
+      available_bandwidth: 10000000000
+      delay: 1000
+  nodes:
+    - id: 0
+      kind: Source
+    - id: 1
+      kind: Destination
+    - id: 4
+      kind: Switch
+  flows:
+    - 0
+? - 4
+  - 6
+: edge: 8
+  bottleneck:
+    from: 4
+    to: 6
+    total_bandwidth: 10000000000
+    available_bandwidth: 10000000000
+    delay: 1000
+  other_links:
+    - from: 0
+      to: 4
+      total_bandwidth: 10000000000
+      available_bandwidth: 10000000000
+      delay: 1000
+    - from: 6
+      to: 2
+      total_bandwidth: 100000000000
+      available_bandwidth: 100000000000
+      delay: 2000
+  nodes:
+    - id: 0
+      kind: Source
+    - id: 2
+      kind: Destination
+    - id: 4
+      kind: Switch
+    - id: 6
+      kind: Switch
+  flows:
+    - 1
+? - 5
+  - 2
+: edge: 5
+  bottleneck:
+    from: 5
+    to: 2
+    total_bandwidth: 10000000000
+    available_bandwidth: 10000000000
+    delay: 1000
+  other_links:
+    - from: 0
+      to: 5
+      total_bandwidth: 10000000000
+      available_bandwidth: 10000000000
+      delay: 3000
+  nodes:
+    - id: 0
+      kind: Source
+    - id: 2
+      kind: Destination
+    - id: 5
+      kind: Switch
+  flows:
+    - 1
+? - 6
+  - 5
+: edge: 13
+  bottleneck:
+    from: 6
+    to: 5
+    total_bandwidth: 10000000000
+    available_bandwidth: 10000000000
+    delay: 1000
+  other_links:
+    - from: 0
+      to: 6
+      total_bandwidth: 10000000000
+      available_bandwidth: 10000000000
+      delay: 2000
+    - from: 5
+      to: 2
+      total_bandwidth: 100000000000
+      available_bandwidth: 100000000000
+      delay: 1000
+  nodes:
+    - id: 0
+      kind: Source
+    - id: 2
+      kind: Destination
+    - id: 6
+      kind: Switch
+    - id: 5
+      kind: Switch
+  flows:
+    - 1
+

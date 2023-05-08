@@ -201,6 +201,33 @@ pub enum ParseNs3Error {
     ParseInt(#[from] std::num::ParseIntError),
 }
 
+/// Congestion control protocol.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative, serde::Serialize, serde::Deserialize)]
+#[derivative(Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CcKind {
+    /// DCTCP.
+    #[derivative(Default)]
+    Dctcp,
+    /// TIMELY.
+    Timely,
+    /// HPCC.
+    Hpcc,
+    /// DCQCN.
+    Dcqcn,
+}
+
+impl CcKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CcKind::Dctcp => "dctcp",
+            CcKind::Timely => "timely_vwin",
+            CcKind::Hpcc => "hp",
+            CcKind::Dcqcn => "dcqcn_paper_vwin",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,32 +282,5 @@ mod tests {
         1 0 2 3 100 5678 2
         "###);
         Ok(())
-    }
-}
-
-/// Congestion control protocol.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Derivative, serde::Serialize, serde::Deserialize)]
-#[derivative(Default)]
-#[serde(rename_all = "lowercase")]
-pub enum CcKind {
-    /// DCTCP.
-    #[derivative(Default)]
-    Dctcp,
-    /// TIMELY.
-    Timely,
-    /// HPCC.
-    Hpcc,
-    /// DCQCN.
-    Dcqcn,
-}
-
-impl CcKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CcKind::Dctcp => "dctcp",
-            CcKind::Timely => "timely_vwin",
-            CcKind::Hpcc => "hp",
-            CcKind::Dcqcn => "dcqcn_paper_vwin",
-        }
     }
 }

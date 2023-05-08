@@ -7,9 +7,12 @@
 mod ident;
 
 pub mod cluster;
+pub mod constants;
+pub mod distribute;
 pub mod edist;
 pub mod linksim;
 pub mod network;
+pub mod opts;
 pub mod run;
 pub mod spec;
 pub mod units;

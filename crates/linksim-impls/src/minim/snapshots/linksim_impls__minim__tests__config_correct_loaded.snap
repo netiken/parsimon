@@ -50066,12 +50066,12 @@ expression: snapshot
   - 0
 : bandwidth: 9667304162
   sources:
-    - id: 2
-      delay2btl: 3000
-      link_rate: 9666799363
     - id: 1
       delay2btl: 1000
       link_rate: 9690326728
+    - id: 2
+      delay2btl: 3000
+      link_rate: 9666799363
     - id: 3
       delay2btl: 3000
       link_rate: 9686486837
@@ -104748,12 +104748,12 @@ expression: snapshot
     - id: 0
       delay2btl: 3000
       link_rate: 9692977674
-    - id: 2
-      delay2btl: 1000
-      link_rate: 9666799363
     - id: 1
       delay2btl: 3000
       link_rate: 9690326728
+    - id: 2
+      delay2btl: 1000
+      link_rate: 9666799363
   flows:
     - id: 3
       source: 0

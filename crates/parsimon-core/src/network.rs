@@ -5,12 +5,13 @@
 //! Finally, the simulations are run to produce a [`DelayNetwork`], which can be queried for FCT
 //! delay estimates.
 
-mod routing;
+pub(crate) mod routing;
 pub(crate) mod topology;
 pub mod types;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, net::SocketAddr};
 
+use chrono::Utc;
 use itertools::Itertools;
 use petgraph::graph::NodeIndex;
 use rand::prelude::*;
@@ -22,8 +23,13 @@ pub use types::*;
 
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
-    edist::{BucketOpts, EDistError},
-    linksim::{LinkSim, LinkSimError},
+    constants::SZ_PKTMAX,
+    distribute::{self, WorkerChunk, WorkerParams},
+    edist::EDistError,
+    linksim::{
+        LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
+    },
+    opts::SimOpts,
     units::{BitsPerSec, Bytes, Nanosecs},
     utils,
 };
@@ -162,27 +168,34 @@ impl SimNetwork {
 
     /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
     /// processing the results into empirical distributions bucketed by flow size.
-    ///
-    /// Bucketing is done with default [`BucketOpts`] parameters `x = 2` and `b = 100`.
-    pub fn into_delays<S>(self, sim: S) -> Result<DelayNetwork, SimNetworkError>
+    pub fn into_delays<S>(self, opts: SimOpts<S>) -> Result<DelayNetwork, SimNetworkError>
     where
         S: LinkSim + Sync,
     {
         let mut topology = Topology::new_edist(&self.topology);
-        let eidx2data = self.simulate_clusters(sim)?;
+
+        let eidx2data = if opts.is_local() {
+            self.simulate_clusters_locally(opts.link_sim)?
+        } else {
+            self.simulate_clusters(opts.link_sim, &opts.workers)?
+        };
+
         // Every channel gets filled with delay distributions. All channels in the same cluster get
         // filled using the cluster representative's data.
         for cluster in &self.clusters {
             let representative = cluster.representative();
             for &member in cluster.members() {
                 // Fill channel with packet-normalized delay predictions
-                let data = eidx2data.get(&representative).unwrap();
+                let data = match eidx2data.get(&representative) {
+                    Some(data) => &data[..],
+                    None => &[],
+                };
                 if !data.is_empty() {
                     topology.graph[member].dists.fill(
                         data,
                         |rec| rec.size,
                         |rec| rec.pktnorm_delay(),
-                        BucketOpts::default(),
+                        opts.bucket_opts,
                     )?;
                 }
             }
@@ -193,44 +206,7 @@ impl SimNetwork {
         })
     }
 
-    /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
-    /// processing the results into empirical distributions bucketed by flow size.
-    ///
-    /// Bucketing is done using the provided [`BucketOpts`] parameters.
-    pub fn into_delays_with_opts<S>(
-        self,
-        sim: S,
-        opts: BucketOpts,
-    ) -> Result<DelayNetwork, SimNetworkError>
-    where
-        S: LinkSim + Sync,
-    {
-        let mut topology = Topology::new_edist(&self.topology);
-        let eidx2data = self.simulate_clusters(sim)?;
-        // Every channel gets filled with delay distributions. All channels in the same cluster get
-        // filled using the cluster representative's data.
-        for cluster in &self.clusters {
-            let representative = cluster.representative();
-            for &member in cluster.members() {
-                // Fill channel with packet-normalized delay predictions
-                let data = eidx2data.get(&representative).unwrap();
-                if !data.is_empty() {
-                    topology.graph[member].dists.fill(
-                        data,
-                        |rec| rec.size,
-                        |rec| rec.pktnorm_delay(),
-                        opts,
-                    )?;
-                }
-            }
-        }
-        Ok(DelayNetwork {
-            topology,
-            routes: self.routes,
-        })
-    }
-
-    pub(crate) fn simulate_clusters<S>(
+    fn simulate_clusters_locally<S>(
         &self,
         sim: S,
     ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
@@ -241,16 +217,99 @@ impl SimNetwork {
         // Simulate all cluster representatives in parallel.
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
-            let chan = self.edge(edge).unwrap();
-            let data = if chan.nr_flows() > 0 {
-                sim.simulate(self, edge)?
-            } else {
-                Vec::new()
+            let data = match self.link_sim_desc(edge) {
+                Some(desc) => {
+                    let flows = desc
+                        .flows
+                        .iter()
+                        .map(|id| self.flows.get(id).unwrap().to_owned())
+                        .collect::<Vec<_>>();
+                    let spec = LinkSimSpec {
+                        edge: desc.edge,
+                        bottleneck: desc.bottleneck,
+                        other_links: desc.other_links,
+                        nodes: desc.nodes,
+                        flows,
+                    };
+                    sim.simulate(spec)?
+                }
+                None => Vec::new(),
             };
             s.send((edge, data)).unwrap(); // the channel should never become disconnected
             Result::<(), SimNetworkError>::Ok(())
         })?;
         Ok(r.iter().collect())
+    }
+
+    fn simulate_clusters<S>(
+        &self,
+        sim: S,
+        workers: &[SocketAddr],
+    ) -> Result<HashMap<EdgeIndex, Vec<FctRecord>>, SimNetworkError>
+    where
+        S: LinkSim + Sync,
+    {
+        let sim = (sim.name(), serde_json::to_string(&sim)?);
+        let assignments = self.assign_work_randomly(workers);
+        let assignments = assignments
+            .iter()
+            .enumerate()
+            .par_bridge()
+            .map(|(i, (worker, edges))| {
+                let descs = edges
+                    .par_iter()
+                    .filter_map(|&edge| self.link_sim_desc(edge))
+                    .collect::<Vec<_>>();
+                let flows = descs
+                    .iter()
+                    .flat_map(|d| d.flows.iter())
+                    .unique()
+                    .map(|id| self.flows.get(id).unwrap().to_owned())
+                    .collect::<Vec<_>>();
+                let chunk = WorkerChunk { descs, flows };
+                let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+                let params = WorkerParams {
+                    link_sim: sim.clone(),
+                    chunk_path: format!("/tmp/pmn_input_worker_{}_{}.mpk", i, timestamp).into(),
+                };
+                (worker, chunk, params)
+            })
+            .collect::<Vec<_>>();
+        let rt = tokio::runtime::Runtime::new()?;
+        let results = rt.block_on(async {
+            let handles = assignments
+                .into_iter()
+                .map(|(&worker, chunk, params)| {
+                    tokio::spawn(distribute::work_remote(worker, params, chunk))
+                })
+                .collect::<Vec<_>>();
+            let mut results = Vec::new();
+            for handle in handles {
+                results.append(&mut handle.await??);
+            }
+            Result::<_, SimNetworkError>::Ok(results)
+        })?;
+        Ok(results
+            .into_iter()
+            .map(|(edge, records)| (EdgeIndex::new(edge), records))
+            .collect())
+    }
+
+    fn assign_work_randomly(&self, workers: &[SocketAddr]) -> Vec<(SocketAddr, Vec<EdgeIndex>)> {
+        assert!(!workers.is_empty());
+        let mut edges = self
+            .clusters
+            .iter()
+            .map(|c| c.representative())
+            .collect::<Vec<_>>();
+        let mut rng = StdRng::seed_from_u64(0);
+        edges.shuffle(&mut rng);
+        let chunk_size = edges.len() / workers.len();
+        workers
+            .iter()
+            .zip(edges.chunks(chunk_size))
+            .map(|(&w, es)| (w, es.to_vec()))
+            .collect()
     }
 
     /// Returns the flows traversing a given edge, or `None` if the edge doesn't exist.
@@ -307,8 +366,7 @@ impl SimNetwork {
         let chan = self.edge(eidx)?;
         let flows = self.flows_on(eidx)?;
         let nr_bytes = flows.iter().map(|f| f.size).sum::<Bytes>();
-        let duration = flows.last().map(|f| f.start).unwrap_or_default()
-            - flows.first().map(|f| f.start).unwrap_or_default();
+        let duration = self.duration_of(eidx)?;
         (duration != Nanosecs::ZERO)
             .then(|| {
                 assert!(chan.bandwidth() != BitsPerSec::ZERO);
@@ -316,6 +374,116 @@ impl SimNetwork {
                 bps / chan.bandwidth().into_f64()
             })
             .or(Some(0.0))
+    }
+
+    /// Returns the rate of the ACKs on a given link, or `None` if the link doesn't exist.
+    pub fn ack_rate_of(&self, eidx: EdgeIndex) -> Option<BitsPerSec> {
+        let chan = self.edge(eidx)?;
+        // TODO: Make finding a reverse edge more efficient
+        let reverse_edge = self.find_edge(chan.dst(), chan.src()).unwrap();
+        let reverse_chan = self.edge(reverse_edge)?;
+        let duration = self.duration_of(reverse_edge)?;
+        if duration == Nanosecs::ZERO {
+            return Some(BitsPerSec::ZERO);
+        }
+        let inner = reverse_chan.nr_ack_bytes.into_f64() * 8.0 * 1e9 / duration.into_f64();
+        Some(BitsPerSec::new(inner.round() as u64))
+    }
+
+    pub(crate) fn duration_of(&self, eidx: EdgeIndex) -> Option<Nanosecs> {
+        let chan = self.edge(eidx)?;
+        Some(chan.duration())
+    }
+
+    /// Returns a link-level descriptor for a given edge.
+    pub fn link_sim_desc(&self, edge: EdgeIndex) -> Option<LinkSimDesc> {
+        let chan = self.edge(edge)?;
+        if chan.nr_flows() == 0 {
+            // Sources and destinations for link-level topologies are extracted from flows, so if
+            // there are no flows, there is no link-level topology.
+            return None;
+        }
+
+        // NOTE: `bsrc` and `bdst` may be in `srcs` and `dsts`, respectively
+        let (srcs, dsts) = (&chan.flow_srcs, &chan.flow_dsts);
+        let (bsrc, bdst) = (chan.src(), chan.dst());
+
+        assert!(srcs.intersection(dsts).count() == 0);
+        let nodes = srcs
+            .iter()
+            .chain(dsts.iter())
+            .chain([&bsrc, &bdst].into_iter())
+            .unique()
+            .map(|&id| {
+                let Node { kind, .. } = self.node(id).unwrap();
+                let kind = match kind {
+                    NodeKind::Switch => LinkSimNodeKind::Switch,
+                    NodeKind::Host if srcs.contains(&id) => LinkSimNodeKind::Source,
+                    NodeKind::Host if dsts.contains(&id) => LinkSimNodeKind::Destination,
+                    _ => unreachable!("`link_sim_desc`: unknown node kind"),
+                };
+                LinkSimNode { id, kind }
+            })
+            .collect::<Vec<_>>();
+
+        let mut other_links = Vec::new();
+        // Connect sources to the bottleneck. If `bsrc` is in `srcs`, then the
+        // bottleneck channel is assumed to be a host-ToR up-channel.
+        if srcs.contains(&bsrc) {
+            assert!(srcs.len() == 1);
+        } else {
+            for &src in srcs {
+                // CORRECTNESS: assumes all paths from `src` to `bsrc` have the
+                // same min bandwidth and delay
+                let path = self.path(src, bsrc, |choices| choices.first());
+                let &(eidx, chan) = path.iter().next().unwrap();
+                let link = LinkSimLink {
+                    from: src,
+                    to: bsrc,
+                    total_bandwidth: chan.bandwidth(),
+                    available_bandwidth: chan.bandwidth() - self.ack_rate_of(eidx).unwrap(),
+                    delay: path.delay(),
+                };
+                other_links.push(link);
+            }
+        }
+        // Connect the bottleneck to destinations with _fat links_. If `bdst`
+        // is in `dsts`, then the bottleneck channel is assumed to be a
+        // ToR-host down-channel.
+        if dsts.contains(&bdst) {
+            assert!(dsts.len() == 1);
+        } else {
+            for &dst in dsts {
+                // CORRECTNESS: assumes all paths from `bdst` to `dst` have the
+                // same min bandwidth and delay
+                let path = self.path(bdst, dst, |choices| choices.first());
+                let bandwidth = path.bandwidths().min().unwrap().scale_by(10.0);
+                let link = LinkSimLink {
+                    from: bdst,
+                    to: dst,
+                    total_bandwidth: bandwidth,
+                    available_bandwidth: bandwidth,
+                    delay: path.delay(),
+                };
+                other_links.push(link);
+            }
+        }
+        // Now include the bottleneck channel
+        let bottleneck = LinkSimLink {
+            from: bsrc,
+            to: bdst,
+            total_bandwidth: chan.bandwidth(),
+            available_bandwidth: chan.bandwidth() - self.ack_rate_of(edge).unwrap(),
+            delay: chan.delay(),
+        };
+
+        Some(LinkSimDesc {
+            edge: edge.index(),
+            bottleneck,
+            other_links,
+            nodes,
+            flows: chan.flows.clone(),
+        })
     }
 
     delegate::delegate! {
@@ -371,6 +539,34 @@ pub enum SimNetworkError {
     /// Error constructing empirical distribution.
     #[error("Failed to construct empirical distribution")]
     EDist(#[from] EDistError),
+
+    /// OpenSSH error.
+    #[error("OpenSSH error")]
+    OpenSSH(#[from] openssh::Error),
+
+    /// SFTP client error.
+    #[error("SFTP client error")]
+    Sftp(#[from] openssh_sftp_client::Error),
+
+    /// MessagePack encode error.
+    #[error("MessagePack encode error")]
+    RmpEncode(#[from] rmp_serde::encode::Error),
+
+    /// MessagePack decode error.
+    #[error("MessagePack decode error")]
+    RmpDecode(#[from] rmp_serde::decode::Error),
+
+    /// JSON serialization/deserialization error.
+    #[error("JSON error")]
+    Json(#[from] serde_json::Error),
+
+    /// Tokio IO error.
+    #[error("Tokio IO error.")]
+    TokioIo(#[from] tokio::io::Error),
+
+    /// Tokio join error.
+    #[error("Tokio join error.")]
+    TokioJoin(#[from] tokio::task::JoinError),
 }
 
 /// A `DelayNetwork` is a network in which all edges contain empirical distributions of FCT delay
@@ -406,7 +602,7 @@ impl DelayNetwork {
             .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })
@@ -454,7 +650,7 @@ impl DelayNetwork {
             .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })?;
@@ -487,7 +683,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
     }
 }
 
-trait TraversableNetwork<C: Clone + Channel> {
+pub(crate) trait TraversableNetwork<C: Clone + Channel> {
     fn topology(&self) -> &Topology<C>;
 
     fn routes(&self) -> &Routes;
@@ -538,6 +734,8 @@ trait TraversableNetwork<C: Clone + Channel> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use anyhow::Context;
 
     use crate::network::FlowId;
@@ -602,6 +800,42 @@ mod tests {
             .iter()
             .enumerate()
             .all(|(i, c)| c.representative().index() == i));
+        Ok(())
+    }
+
+    #[test]
+    fn link_sim_desc_correct() -> anyhow::Result<()> {
+        let (nodes, links) = testing::eight_node_config();
+        let flows = vec![
+            Flow {
+                id: FlowId::new(0),
+                src: NodeId::new(0),
+                dst: NodeId::new(1),
+                size: Bytes::new(1234),
+                start: Nanosecs::new(1_000_000_000),
+            },
+            Flow {
+                id: FlowId::new(1),
+                src: NodeId::new(0),
+                dst: NodeId::new(2),
+                size: Bytes::new(5678),
+                start: Nanosecs::new(2_000_000_000),
+            },
+        ];
+
+        let network = Network::new(&nodes, &links)?;
+        let network = network.into_simulations(flows);
+        let check = network
+            .edge_indices()
+            .filter_map(|eidx| {
+                let chan = network.edge(eidx).unwrap();
+                let desc = network.link_sim_desc(eidx)?;
+                Some(((chan.src(), chan.dst()), desc))
+            })
+            .collect::<BTreeMap<_, _>>();
+
+        insta::assert_yaml_snapshot!(check);
+
         Ok(())
     }
 }

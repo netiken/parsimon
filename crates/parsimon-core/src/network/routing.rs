@@ -18,13 +18,13 @@ type HopMatrix = Vec<HopMap>;
 type HopMap = Vec<Vec<NodeId>>;
 
 #[derive(Debug, Clone, serde::Serialize)]
-pub(super) struct Routes {
+pub(crate) struct Routes {
     inner: HopMatrix,
 }
 
 impl Routes {
     /// Builds a routing table from a topology using BFS.
-    pub(super) fn new(topology: &Topology<BasicChannel>) -> Self {
+    pub(crate) fn new(topology: &Topology<BasicChannel>) -> Self {
         let g = &topology.graph;
 
         // Each node is the starting point for a BFS. Do do chunks of these in parallel.
@@ -71,11 +71,11 @@ impl Routes {
         Self { inner: hops }
     }
 
-    pub(super) fn for_node(&self, node: NodeId) -> Option<&HopMap> {
+    pub(crate) fn for_node(&self, node: NodeId) -> Option<&HopMap> {
         self.inner.get(node.inner())
     }
 
-    pub(super) fn next_hops_unchecked(&self, from: NodeId, to: NodeId) -> &[NodeId] {
+    pub(crate) fn next_hops_unchecked(&self, from: NodeId, to: NodeId) -> &[NodeId] {
         self.for_node(from)
             .expect("missing node in routes")
             .get(to.inner())

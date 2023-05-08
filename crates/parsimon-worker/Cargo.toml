@@ -1,0 +1,18 @@
+[package]
+name = "parsimon-worker"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+parsimon-core = { path = "../parsimon-core" }
+linksim-impls = { path = "../linksim-impls" }
+rayon.workspace = true
+ctrlc = "3.2.5"
+anyhow.workspace = true
+rmp-serde = "1.1.1"
+rustc-hash = "1.1.0"
+crossbeam-channel = "0.5.8"
+serde_json = "1.0.96"
+clap = { version = "4.2.7", features = ["derive", "suggestions"] }

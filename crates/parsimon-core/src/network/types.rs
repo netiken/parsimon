@@ -4,15 +4,14 @@
 use std::cmp::Ordering;
 
 use petgraph::graph::EdgeIndex;
+use rustc_hash::FxHashSet;
 
+use crate::constants::{SZ_ACK, SZ_PKTMAX};
 use crate::edist::EDistBuckets;
 use crate::units::{BitsPerSec, Bytes, Nanosecs};
 
-/// The maximum packet size.
-pub const PKTSIZE_MAX: Bytes = Bytes::new(1000);
-
 /// A node in the network topology.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     /// The node ID.
     pub id: NodeId,
@@ -58,7 +57,7 @@ pub struct Link {
     pub b: NodeId,
     /// The link bandwidth.
     pub bandwidth: BitsPerSec,
-    /// THe propagation delay.
+    /// The propagation delay.
     pub delay: Nanosecs,
 }
 
@@ -157,6 +156,14 @@ pub struct FlowChannel {
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
+
+    // `FlowChannel` specific data
+    pub(crate) nr_bytes: Bytes,
+    pub(crate) nr_ack_bytes: Bytes,
+    pub(crate) flow_srcs: FxHashSet<NodeId>,
+    pub(crate) flow_dsts: FxHashSet<NodeId>,
+    pub(crate) flow_start: Nanosecs,
+    pub(crate) flow_end: Nanosecs,
     pub(crate) flows: Vec<FlowId>,
 }
 
@@ -169,6 +176,12 @@ impl FlowChannel {
             dst: chan.dst,
             bandwidth: chan.bandwidth,
             delay: chan.delay,
+            nr_bytes: Bytes::ZERO,
+            nr_ack_bytes: Bytes::ZERO,
+            flow_srcs: FxHashSet::default(),
+            flow_dsts: FxHashSet::default(),
+            flow_start: Nanosecs::MAX,
+            flow_end: Nanosecs::ZERO,
             flows: Vec::new(),
         }
     }
@@ -179,7 +192,23 @@ impl FlowChannel {
     }
 
     pub(crate) fn push_flow(&mut self, flow: &Flow) {
+        self.nr_bytes += flow.size;
+        let nr_pkts = (flow.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+        let nr_ack_bytes = SZ_ACK.scale_by(nr_pkts);
+        self.nr_ack_bytes += nr_ack_bytes;
+        self.flow_srcs.insert(flow.src);
+        self.flow_dsts.insert(flow.dst);
+        self.flow_start = std::cmp::min(self.flow_start, flow.start);
+        self.flow_end = std::cmp::max(self.flow_end, flow.start);
         self.flows.push(flow.id);
+    }
+    
+    pub(crate) fn duration(&self) -> Nanosecs {
+        if self.flows.is_empty() {
+            Nanosecs::ZERO
+        } else {
+            self.flow_end - self.flow_start
+        }
     }
 
     delegate::delegate! {
@@ -259,7 +288,7 @@ pub struct Flow {
 }
 
 /// An `FctRecord` records the flow completion time of a particular flow.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct FctRecord {
     /// The flow ID.
     pub id: FlowId,
@@ -287,7 +316,7 @@ impl FctRecord {
     /// Returns the packet-normalized delay, which is the delay normalized by the number of packets
     /// in the flow.
     pub fn pktnorm_delay(&self) -> f64 {
-        let nr_pkts = (self.size.into_f64() / PKTSIZE_MAX.into_f64()).ceil();
+        let nr_pkts = (self.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
     }
 

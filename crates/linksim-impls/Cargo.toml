@@ -11,7 +11,9 @@ cmd_lib = "1.3.0"
 minim = { git = "https://github.com/netiken/minim.git" }
 ns3-frontend = { path = "../ns3-frontend" }
 parsimon-core = { path = "../parsimon-core" }
+petgraph = { workspace = true }
 rustc-hash = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 typed-builder = { workspace = true }
 
