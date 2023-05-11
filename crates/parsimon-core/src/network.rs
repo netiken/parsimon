@@ -18,6 +18,7 @@ use rand::prelude::*;
 use rayon::prelude::*;
 
 pub use petgraph::graph::EdgeIndex;
+use rustc_hash::{FxHashMap, FxHashSet};
 pub use topology::TopologyError;
 pub use types::*;
 
@@ -76,10 +77,25 @@ impl Network {
                 }
             }
             assignments
+        })
+        .fold(FxHashMap::default(), |mut map, (e, f)| {
+            map.entry(e).or_insert(Vec::new()).push(f);
+            map
         });
-        // POSTCONDITION: The flows populating each link will be sorted by start time.
-        for (eidx, flow) in assignments.sorted_by_key(|&(_, flow)| flow.start) {
-            topology.graph[eidx].push_flow(&flow);
+        let assignments = assignments
+            .into_par_iter()
+            .map(|(eidx, mut flows)| {
+                let mut chan = FlowChannel::new_from(&self.topology.graph[eidx]);
+                // POSTCONDITION: The flows populating each link will be sorted by start time.
+                flows.sort_by_key(|f| f.start);
+                for f in flows {
+                    chan.push_flow(&f);
+                }
+                (eidx, chan)
+            })
+            .collect::<Vec<_>>();
+        for (eidx, chan) in assignments {
+            topology.graph[eidx] = chan;
         }
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
@@ -263,9 +279,16 @@ impl SimNetwork {
                 let flows = descs
                     .iter()
                     .flat_map(|d| d.flows.iter())
-                    .unique()
-                    .map(|id| self.flows.get(id).unwrap().to_owned())
+                    .collect::<FxHashSet<_>>()
+                    .into_iter()
                     .collect::<Vec<_>>();
+                let flows = utils::par_chunks(&flows, |flows| {
+                    flows
+                        .iter()
+                        .map(|&id| self.flows.get(id).unwrap().to_owned())
+                        .collect()
+                })
+                .collect();
                 let chunk = WorkerChunk { descs, flows };
                 let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
                 let params = WorkerParams {
