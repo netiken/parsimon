@@ -16,8 +16,6 @@ itertools = "0.10.4"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
 num_cpus = "1.13.1"
-openssh = { version = "0.9.9", features = ["native-mux"] }
-openssh-sftp-client = "0.12.2"
 ordered-float = "3.1.0"
 petgraph = { workspace = true }
 rand = "0.8.5"

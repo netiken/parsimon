@@ -2,7 +2,6 @@
 //! responding with results from a simulation
 
 use std::{
-    fs::File,
     io::{BufReader, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{
@@ -15,9 +14,9 @@ use std::{
 use anyhow::Context;
 use linksim_impls::{minim::MinimLink, ns3::Ns3Link};
 use parsimon_core::{
-    distribute::{WorkerChunk, WorkerParams},
+    distribute::WorkerParams,
     linksim::{LinkSim, LinkSimError, LinkSimSpec},
-    network::FctRecord,
+    network::{FctRecord},
 };
 use rayon::prelude::*;
 use rmp_serde::decode;
@@ -67,17 +66,16 @@ fn serve(running: Arc<AtomicBool>, port: u16) -> anyhow::Result<()> {
 
 fn handle_client(mut stream: TcpStream) -> anyhow::Result<()> {
     let params: WorkerParams = decode::from_read(BufReader::new(&stream))?;
-    let chunk: WorkerChunk = decode::from_read(BufReader::new(File::open(params.chunk_path)?))?;
     let sim_name = &params.link_sim.0[..];
     let sim_ser = &params.link_sim.1[..];
     let results = match sim_name {
         "minim" => {
             let sim: MinimLink = serde_json::from_str(sim_ser)?;
-            simulate_chunk(chunk, sim)?
+            simulate_chunk(params, sim)?
         }
         "ns3" => {
             let sim: Ns3Link = serde_json::from_str(sim_ser)?;
-            simulate_chunk(chunk, sim)?
+            simulate_chunk(params, sim)?
         }
         _ => unimplemented!("unknown link simulator"),
     };
@@ -88,19 +86,19 @@ fn handle_client(mut stream: TcpStream) -> anyhow::Result<()> {
 }
 
 fn simulate_chunk<S>(
-    chunk: WorkerChunk,
+    params: WorkerParams,
     sim: S,
 ) -> Result<Vec<(usize, Vec<FctRecord>)>, LinkSimError>
 where
     S: LinkSim + Sync,
 {
-    let id2flow = chunk
+    let id2flow = params
         .flows
         .iter()
         .map(|f| (f.id, f.to_owned()))
         .collect::<FxHashMap<_, _>>();
     let (s, r) = crossbeam_channel::unbounded();
-    chunk
+    params
         .descs
         .into_par_iter()
         .try_for_each_with(s, |s, desc| {
