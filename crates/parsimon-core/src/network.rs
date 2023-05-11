@@ -11,7 +11,6 @@ pub mod types;
 
 use std::{collections::HashMap, net::SocketAddr};
 
-use chrono::Utc;
 use itertools::Itertools;
 use petgraph::graph::NodeIndex;
 use rand::prelude::*;
@@ -25,7 +24,7 @@ pub use types::*;
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
     constants::SZ_PKTMAX,
-    distribute::{self, WorkerChunk, WorkerParams},
+    distribute::{self, WorkerParams},
     edist::EDistError,
     linksim::{
         LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
@@ -269,9 +268,8 @@ impl SimNetwork {
         let assignments = self.assign_work_randomly(workers);
         let assignments = assignments
             .iter()
-            .enumerate()
             .par_bridge()
-            .map(|(i, (worker, edges))| {
+            .map(|(worker, edges)| {
                 let descs = edges
                     .par_iter()
                     .filter_map(|&edge| self.link_sim_desc(edge))
@@ -289,21 +287,20 @@ impl SimNetwork {
                         .collect()
                 })
                 .collect();
-                let chunk = WorkerChunk { descs, flows };
-                let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
                 let params = WorkerParams {
                     link_sim: sim.clone(),
-                    chunk_path: format!("/tmp/pmn_input_worker_{}_{}.mpk", i, timestamp).into(),
+                    descs,
+                    flows,
                 };
-                (worker, chunk, params)
+                (worker, params)
             })
             .collect::<Vec<_>>();
         let rt = tokio::runtime::Runtime::new()?;
         let results = rt.block_on(async {
             let handles = assignments
                 .into_iter()
-                .map(|(&worker, chunk, params)| {
-                    tokio::spawn(distribute::work_remote(worker, params, chunk))
+                .map(|(&worker, params)| {
+                    tokio::spawn(distribute::work_remote(worker, params))
                 })
                 .collect::<Vec<_>>();
             let mut results = Vec::new();
@@ -562,14 +559,6 @@ pub enum SimNetworkError {
     /// Error constructing empirical distribution.
     #[error("Failed to construct empirical distribution")]
     EDist(#[from] EDistError),
-
-    /// OpenSSH error.
-    #[error("OpenSSH error")]
-    OpenSSH(#[from] openssh::Error),
-
-    /// SFTP client error.
-    #[error("SFTP client error")]
-    Sftp(#[from] openssh_sftp_client::Error),
 
     /// MessagePack encode error.
     #[error("MessagePack encode error")]
