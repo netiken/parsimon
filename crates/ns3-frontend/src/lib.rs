@@ -4,9 +4,10 @@
 
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
-use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
+use std::{fmt::Write, io};
 
 use derivative::Derivative;
 use parsimon_core::{
@@ -82,20 +83,28 @@ impl Ns3Simulation {
         Ok(records)
     }
 
-    fn invoke_ns3(&self) -> cmd_lib::CmdResult {
-        // We need to canonicalize the directories because we run `cd` below
+    fn invoke_ns3(&self) -> io::Result<()> {
+        // We need to canonicalize the directories because we run `cd` below.
         let data_dir = std::fs::canonicalize(&self.data_dir)?;
+        let data_dir = data_dir.display();
         let ns3_dir = std::fs::canonicalize(&self.ns3_dir)?;
-        let window = self.window.into_u64().to_string();
-        let base_rtt = self.base_rtt.into_u64().to_string();
+        let ns3_dir = ns3_dir.display();
+
+        // Build the command that runs the Python script.
+        let window = self.window.into_u64();
+        let base_rtt = self.base_rtt.into_u64();
         let cc = self.cc_kind.as_str();
-        let extra_args = &[
-            "--topo", "topology", "--trace", "flows", "--bw", "10", "--cc", cc,
-        ];
-        cmd_lib::run_cmd! {
-            cd ${ns3_dir};
-            python2 run.py --root ${data_dir} --fwin ${window} --base_rtt ${base_rtt} $[extra_args] > ${data_dir}/output.txt 2>&1
-        }
+        let python_command = format!(
+            "python2 run.py --root {data_dir} --fwin {window} --base_rtt {base_rtt} \
+            --topo topology --trace flows --bw 10 --cc {cc} \
+            > {data_dir}/output.txt 2>&1"
+        );
+        // Execute the command in a child process.
+        let _output = Command::new("sh")
+            .arg("-c")
+            .arg(format!("cd {ns3_dir}; {python_command}"))
+            .output()?;
+        Ok(())
     }
 }
 

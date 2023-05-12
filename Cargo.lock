@@ -1313,7 +1313,6 @@ name = "ns3-frontend"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cmd_lib",
  "derivative",
  "insta",
  "parsimon-core",
