@@ -26,10 +26,10 @@ First, make sure [Rust is installed](https://www.rust-lang.org/tools/install).
 Then, clone this repository and its submodules. The `Parsimon` libraries are
 all located in the `crates` directory. To obtain the full documentation for any
 library, `cd` into its directory and run `cargo doc --open`. We recommend
-starting with `parsimon-core`:
+starting with `parsimon`, which re-exports public types from all other crates:
 
 ```bash
-$ cd crates/parsimon-core
+$ cd crates/parsimon
 $ cargo doc --open
 ```
 
