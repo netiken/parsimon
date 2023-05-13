@@ -1,12 +1,18 @@
 use clap::Parser;
-use linksim_impls::minim::MinimLink;
-use parsimon_core::cluster::DefaultClustering;
-use parsimon_core::network::types::{Flow, FlowId, Link, Node, NodeId};
-use parsimon_core::network::DelayNetwork;
-use parsimon_core::opts::SimOpts;
-use parsimon_core::run::run;
-use parsimon_core::spec::Spec;
-use parsimon_core::units::{BitsPerSec, Bytes, Gbps, Mbps, Nanosecs};
+use parsimon::{
+    core::{
+        cluster::DefaultClustering,
+        network::{
+            types::{Flow, FlowId, Link, Node, NodeId},
+            DelayNetwork,
+        },
+        opts::SimOpts,
+        run::run,
+        spec::Spec,
+        units::{BitsPerSec, Bytes, Gbps, Mbps, Nanosecs},
+    },
+    impls::linksim::MinimLink,
+};
 use rand::prelude::*;
 use rand_distr::Exp;
 

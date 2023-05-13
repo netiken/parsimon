@@ -5,3 +5,6 @@
 
 pub mod minim;
 pub mod ns3;
+
+pub use crate::minim::MinimLink;
+pub use crate::ns3::Ns3Link;

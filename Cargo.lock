@@ -1582,8 +1582,7 @@ dependencies = [
  "anyhow",
  "clap",
  "itertools",
- "linksim-impls",
- "parsimon-core",
+ "parsimon",
  "rand",
  "rand_distr",
 ]
