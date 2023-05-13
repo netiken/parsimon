@@ -71,13 +71,9 @@ impl Ns3Simulation {
         self.invoke_ns3()?;
 
         // Parse and return results
-        let cc = match self.cc_kind {
-            CcKind::Hpcc => "hp95", // XXX: dumb hack
-            _ => self.cc_kind.as_str(),
-        };
         let s = fs::read_to_string(mk_path(
             self.data_dir.as_path(),
-            format!("fct_topology_flows_{cc}.txt").as_ref(),
+            format!("fct_topology_flows_{}.txt", self.cc_kind.as_str()).as_ref(),
         ))?;
         let records = parse_ns3_records(&s)?;
         Ok(records)
@@ -220,8 +216,6 @@ pub enum CcKind {
     Dctcp,
     /// TIMELY.
     Timely,
-    /// HPCC.
-    Hpcc,
     /// DCQCN.
     Dcqcn,
 }
@@ -231,7 +225,6 @@ impl CcKind {
         match self {
             CcKind::Dctcp => "dctcp",
             CcKind::Timely => "timely_vwin",
-            CcKind::Hpcc => "hp",
             CcKind::Dcqcn => "dcqcn_paper_vwin",
         }
     }

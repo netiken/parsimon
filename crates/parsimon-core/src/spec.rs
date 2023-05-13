@@ -12,9 +12,12 @@ use crate::network::{
 /// A simulation specification.
 #[derive(Debug, typed_builder::TypedBuilder)]
 pub struct Spec {
-    nodes: Vec<Node>,
-    links: Vec<Link>,
-    flows: Vec<Flow>,
+    /// Topology nodes.
+    pub nodes: Vec<Node>,
+    /// Topology links.
+    pub links: Vec<Link>,
+    /// Workload flows.
+    pub flows: Vec<Flow>,
 }
 
 impl Spec {

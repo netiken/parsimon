@@ -8,14 +8,17 @@ use parsimon_core::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-/// An Minim link simulation.
+/// A Minim link simulation.
 #[derive(Debug, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
+    /// The sending window.
     #[builder(setter(into))]
-    window: Bytes,
-    dctcp_gain: f64,
+    pub window: Bytes,
+    /// DCTCP gain.
+    pub dctcp_gain: f64,
+    /// DCTCP additive increase.
     #[builder(setter(into))]
-    dctcp_ai: BitsPerSec,
+    pub dctcp_ai: BitsPerSec,
 }
 
 impl LinkSim for MinimLink {

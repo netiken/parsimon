@@ -1,4 +1,6 @@
-//! An interface to a link-level simulator built atop ns-3.
+//! An interface to a link-level simulator built atop ns-3. This hooks into the ns-3 implementation
+//! at <https://github.com/kwzhao/High-Precision-Congestion-Control>, which is assumed to be
+//! downloaded and compiled prior to the use of this type.
 
 use std::path::PathBuf;
 
@@ -11,16 +13,21 @@ use parsimon_core::{
 /// An ns-3 link simulation.
 #[derive(Debug, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct Ns3Link {
+    /// The top-level directory where data files will be written.
     #[builder(setter(into))]
-    root_dir: PathBuf,
+    pub root_dir: PathBuf,
+    /// The path to the ns-3 simulator (`{path_to}/High-Precision-Congestion-Control/simulation`)
     #[builder(setter(into))]
-    ns3_dir: PathBuf,
+    pub ns3_dir: PathBuf,
+    /// The sending window.
     #[builder(setter(into))]
-    window: Bytes,
+    pub window: Bytes,
+    /// The base round-trip time.
     #[builder(setter(into))]
-    base_rtt: Nanosecs,
+    pub base_rtt: Nanosecs,
+    /// The congestion control algorithm.
     #[builder(default)]
-    cc_kind: CcKind,
+    pub cc_kind: CcKind,
 }
 
 impl LinkSim for Ns3Link {

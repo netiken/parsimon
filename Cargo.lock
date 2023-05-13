@@ -1402,6 +1402,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "parsimon"
+version = "0.1.0"
+dependencies = [
+ "clustering-impls",
+ "linksim-impls",
+ "parsimon-core",
+ "parsimon-utils",
+ "parsimon-worker",
+]
+
+[[package]]
 name = "parsimon-core"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,13 @@
+[package]
+name = "parsimon"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clustering-impls = { version = "0.1.0", path = "../clustering-impls" }
+linksim-impls = { version = "0.1.0", path = "../linksim-impls" }
+parsimon-core = { version = "0.1.0", path = "../parsimon-core" }
+parsimon-utils = { version = "0.1.0", path = "../parsimon-utils" }
+parsimon-worker = { version = "0.1.0", path = "../parsimon-worker" }

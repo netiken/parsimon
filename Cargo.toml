@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/parsimon",
     "crates/parsimon-core",
     "crates/parsimon-worker",
     "crates/parsimon-utils",
