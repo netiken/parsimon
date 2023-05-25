@@ -45,7 +45,7 @@ impl Topology<BasicChannel> {
     /// - Every node must be referenced by some link.
     /// - For any two nodes, there must be at most one link between them.
     /// - Every host node should only have one link.
-    pub(crate) fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
+    pub fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let mut g = DiGraph::new();
         let mut id2idx = FxHashMap::default();
         for (i, n) in nodes.iter().cloned().sorted_by_key(|n| n.id).enumerate() {
