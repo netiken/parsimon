@@ -16,6 +16,7 @@ pub mod opts;
 pub mod run;
 pub mod spec;
 pub mod units;
+pub mod routing;
 
 pub(crate) mod utils;
 

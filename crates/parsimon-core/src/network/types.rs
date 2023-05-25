@@ -139,8 +139,9 @@ impl<T: Channel> Channel for &T {
     }
 }
 
+/// A `BasicChannel` is a one-way channel between two nodes with some bandwidth and delay.
 #[derive(Debug, Clone, PartialEq, Eq, derive_new::new, serde::Serialize)]
-pub(crate) struct BasicChannel {
+pub struct BasicChannel {
     pub(crate) src: NodeId,
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,

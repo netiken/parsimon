@@ -5,8 +5,7 @@
 //! Finally, the simulations are run to produce a [`DelayNetwork`], which can be queried for FCT
 //! delay estimates.
 
-pub(crate) mod routing;
-pub(crate) mod topology;
+pub mod topology;
 pub mod types;
 
 use std::{collections::HashMap, net::SocketAddr};
@@ -30,12 +29,12 @@ use crate::{
         LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
     },
     opts::SimOpts,
+    routing::{BfsRoutes, RoutingAlgo},
     units::{BitsPerSec, Bytes, Nanosecs},
     utils,
 };
 
 use self::{
-    routing::Routes,
     topology::Topology,
     types::{BasicChannel, EDistChannel, FlowChannel, Link, Node},
 };
@@ -44,14 +43,14 @@ use self::{
 #[derive(Debug, Clone)]
 pub struct Network {
     topology: Topology<BasicChannel>,
-    routes: Routes,
+    routes: BfsRoutes,
 }
 
 impl Network {
     /// Creates a new network.
     pub fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let topology = Topology::new(nodes, links)?;
-        let routes = Routes::new(&topology);
+        let routes = BfsRoutes::new(&topology);
         Ok(Self { topology, routes })
     }
 
@@ -132,6 +131,11 @@ impl Network {
             .map(|idx| self.topology.graph[idx].id)
     }
 
+    /// Returns the topology of the network.
+    pub fn topology(&self) -> &Topology<BasicChannel> {
+        &self.topology
+    }
+
     delegate::delegate! {
         to self.topology.graph {
             /// Returns an iterator over all nodes in the network.
@@ -145,6 +149,7 @@ impl Network {
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
     }
+
 }
 
 impl TraversableNetwork<BasicChannel> for Network {
@@ -152,7 +157,7 @@ impl TraversableNetwork<BasicChannel> for Network {
         &self.topology
     }
 
-    fn routes(&self) -> &Routes {
+    fn routes(&self) -> &BfsRoutes {
         &self.routes
     }
 }
@@ -163,7 +168,7 @@ impl TraversableNetwork<BasicChannel> for Network {
 #[derive(Debug, Clone)]
 pub struct SimNetwork {
     topology: Topology<FlowChannel>,
-    routes: Routes,
+    routes: BfsRoutes,
 
     // Channel clustering
     clusters: Vec<Cluster>,
@@ -299,9 +304,7 @@ impl SimNetwork {
         let results = rt.block_on(async {
             let handles = assignments
                 .into_iter()
-                .map(|(&worker, params)| {
-                    tokio::spawn(distribute::work_remote(worker, params))
-                })
+                .map(|(&worker, params)| tokio::spawn(distribute::work_remote(worker, params)))
                 .collect::<Vec<_>>();
             let mut results = Vec::new();
             for handle in handles {
@@ -544,7 +547,7 @@ impl TraversableNetwork<FlowChannel> for SimNetwork {
         &self.topology
     }
 
-    fn routes(&self) -> &Routes {
+    fn routes(&self) -> &BfsRoutes {
         &self.routes
     }
 }
@@ -587,7 +590,7 @@ pub enum SimNetworkError {
 #[allow(unused)]
 pub struct DelayNetwork {
     topology: Topology<EDistChannel>,
-    routes: Routes,
+    routes: BfsRoutes,
 }
 
 impl DelayNetwork {
@@ -690,7 +693,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
         &self.topology
     }
 
-    fn routes(&self) -> &Routes {
+    fn routes(&self) -> &BfsRoutes {
         &self.routes
     }
 }
@@ -698,7 +701,7 @@ impl TraversableNetwork<EDistChannel> for DelayNetwork {
 pub(crate) trait TraversableNetwork<C: Clone + Channel> {
     fn topology(&self) -> &Topology<C>;
 
-    fn routes(&self) -> &Routes;
+    fn routes(&self) -> &BfsRoutes;
 
     fn nr_edges(&self) -> usize {
         self.topology().nr_edges()
@@ -713,8 +716,11 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel> {
         let mut acc = Vec::new();
         let mut cur = src;
         while cur != dst {
-            let next_hop_choices = self.routes().next_hops_unchecked(cur, dst);
-            match choose(next_hop_choices) {
+            let next_hop_choices = match self.routes().next_hops(cur, dst) {
+                Some(hops) => hops,
+                None => break,
+            };
+            match choose(&next_hop_choices) {
                 Some(&next_hop) => {
                     // These indices are all guaranteed to exist because we have a valid topology
                     let i = *self.topology().idx_of(&cur).unwrap();

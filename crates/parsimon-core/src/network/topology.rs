@@ -1,3 +1,5 @@
+//! This module defines network topologies with different kinds of links.
+
 use itertools::Itertools;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -6,8 +8,9 @@ use crate::network::types::{BasicChannel, FlowChannel, Link, Node, NodeId, NodeK
 
 use super::types::EDistChannel;
 
+/// A network topology.
 #[derive(Debug, Clone)]
-pub(crate) struct Topology<C: Clone> {
+pub struct Topology<C: Clone> {
     pub(crate) graph: DiGraph<Node, C>,
     pub(crate) id2idx: FxHashMap<NodeId, NodeIndex>,
     pub(crate) links: Vec<Link>,
