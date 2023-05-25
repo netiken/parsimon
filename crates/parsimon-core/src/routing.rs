@@ -25,14 +25,15 @@ pub trait RoutingAlgo {
 type HopMatrix = Vec<HopMap>;
 type HopMap = Vec<Vec<NodeId>>;
 
+/// A routing matrix constructed with BFS.
 #[derive(Debug, Clone, serde::Serialize)]
-pub(crate) struct BfsRoutes {
+pub struct BfsRoutes {
     inner: HopMatrix,
 }
 
 impl BfsRoutes {
     /// Builds a routing table from a topology using BFS.
-    pub(crate) fn new(topology: &Topology<BasicChannel>) -> Self {
+    pub fn new(topology: &Topology<BasicChannel>) -> Self {
         let g = &topology.graph;
 
         // Each node is the starting point for a BFS. Do chunks of these in parallel.
