@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use petgraph::graph::EdgeIndex;
 
-use crate::network::SimNetwork;
+use crate::{network::SimNetwork, routing::RoutingAlgo};
 
 /// A cluster of edges with a representative member.
 #[derive(Debug, Clone, derive_new::new)]
@@ -35,11 +35,16 @@ impl Cluster {
 pub trait ClusteringAlgo {
     /// Given a [`SimNetwork`], run a clustering algorithm and return a vector of
     /// [clusters](Cluster).
-    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster>;
+    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    where
+        R: RoutingAlgo + Sync;
 }
 
 impl<C: ClusteringAlgo> ClusteringAlgo for &C {
-    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
+    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    where
+        R: RoutingAlgo + Sync,
+    {
         (*self).cluster(network)
     }
 }
@@ -49,7 +54,10 @@ impl<C: ClusteringAlgo> ClusteringAlgo for &C {
 pub struct DefaultClustering;
 
 impl ClusteringAlgo for DefaultClustering {
-    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
+    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    where
+        R: RoutingAlgo + Sync,
+    {
         network.clusters().to_vec()
     }
 }

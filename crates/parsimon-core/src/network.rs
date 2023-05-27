@@ -41,16 +41,31 @@ use self::{
 
 /// A `Network` is a collection of nodes, links, and routes.
 #[derive(Debug, Clone)]
-pub struct Network {
+pub struct Network<R = BfsRoutes> {
     topology: Topology<BasicChannel>,
-    routes: BfsRoutes,
+    routes: R,
 }
 
-impl Network {
-    /// Creates a new network.
+impl Network<BfsRoutes> {
+    /// Creates a new network with default [BFS routing](`BfsRoutes`).
     pub fn new(nodes: &[Node], links: &[Link]) -> Result<Self, TopologyError> {
         let topology = Topology::new(nodes, links)?;
         let routes = BfsRoutes::new(&topology);
+        Ok(Self { topology, routes })
+    }
+}
+
+impl<R> Network<R>
+where
+    R: RoutingAlgo + Sync,
+{
+    /// Creates a new network with a given routing implementation.
+    pub fn new_with_routes(
+        nodes: &[Node],
+        links: &[Link],
+        routes: R,
+    ) -> Result<Self, TopologyError> {
+        let topology = Topology::new(nodes, links)?;
         Ok(Self { topology, routes })
     }
 
@@ -59,7 +74,7 @@ impl Network {
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
-    pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork {
+    pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
         let mut topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
@@ -149,15 +164,17 @@ impl Network {
             pub fn links(&self) -> impl Iterator<Item = &Link>;
         }
     }
-
 }
 
-impl TraversableNetwork<BasicChannel> for Network {
+impl<R> TraversableNetwork<BasicChannel, R> for Network<R>
+where
+    R: RoutingAlgo,
+{
     fn topology(&self) -> &Topology<BasicChannel> {
         &self.topology
     }
 
-    fn routes(&self) -> &BfsRoutes {
+    fn routes(&self) -> &R {
         &self.routes
     }
 }
@@ -166,9 +183,9 @@ impl TraversableNetwork<BasicChannel> for Network {
 /// flows traversing it. These links can be simulated to produce a [`DelayNetwork`]. Optionally,
 /// they can also be clustered to reduce the number of simulations.
 #[derive(Debug, Clone)]
-pub struct SimNetwork {
+pub struct SimNetwork<R = BfsRoutes> {
     topology: Topology<FlowChannel>,
-    routes: BfsRoutes,
+    routes: R,
 
     // Channel clustering
     clusters: Vec<Cluster>,
@@ -176,7 +193,10 @@ pub struct SimNetwork {
     flows: HashMap<FlowId, Flow>,
 }
 
-impl SimNetwork {
+impl<R> SimNetwork<R>
+where
+    R: RoutingAlgo + Sync,
+{
     /// Clusters the links in the network with the given clustering algorithm.
     pub fn cluster<C>(&mut self, algorithm: C)
     where
@@ -188,7 +208,7 @@ impl SimNetwork {
 
     /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
     /// processing the results into empirical distributions bucketed by flow size.
-    pub fn into_delays<S>(self, opts: SimOpts<S>) -> Result<DelayNetwork, SimNetworkError>
+    pub fn into_delays<S>(self, opts: SimOpts<S>) -> Result<DelayNetwork<R>, SimNetworkError>
     where
         S: LinkSim + Sync,
     {
@@ -376,7 +396,7 @@ impl SimNetwork {
         dst: NodeId,
         choose: impl FnMut(&[NodeId]) -> Option<&NodeId>,
     ) -> Path<FlowChannel> {
-        <Self as TraversableNetwork<FlowChannel>>::path(self, src, dst, choose)
+        <Self as TraversableNetwork<FlowChannel, R>>::path(self, src, dst, choose)
     }
 
     /// Returns an iterator over all link loads.
@@ -542,12 +562,15 @@ impl SimNetwork {
     }
 }
 
-impl TraversableNetwork<FlowChannel> for SimNetwork {
+impl<R> TraversableNetwork<FlowChannel, R> for SimNetwork<R>
+where
+    R: RoutingAlgo,
+{
     fn topology(&self) -> &Topology<FlowChannel> {
         &self.topology
     }
 
-    fn routes(&self) -> &BfsRoutes {
+    fn routes(&self) -> &R {
         &self.routes
     }
 }
@@ -588,22 +611,25 @@ pub enum SimNetworkError {
 /// bucketed by flow size.
 #[derive(Debug, Clone)]
 #[allow(unused)]
-pub struct DelayNetwork {
+pub struct DelayNetwork<R = BfsRoutes> {
     topology: Topology<EDistChannel>,
-    routes: BfsRoutes,
+    routes: R,
 }
 
-impl DelayNetwork {
+impl<R> DelayNetwork<R>
+where
+    R: RoutingAlgo,
+{
     /// Predict a point estimate of delay for a flow of a particular `size` going from `src` to
     /// `dst`.
-    pub fn predict<R>(
+    pub fn predict<RNG>(
         &self,
         size: Bytes,
         (src, dst): (NodeId, NodeId),
-        mut rng: R,
+        mut rng: RNG,
     ) -> Option<Nanosecs>
     where
-        R: Rng,
+        RNG: Rng,
     {
         let channels = self
             .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
@@ -625,14 +651,14 @@ impl DelayNetwork {
 
     /// Compute the ideal FCT on an unloaded network for a flow of `size` bytes going from `src` to
     /// `dst.
-    pub fn ideal_fct<R>(
+    pub fn ideal_fct<RNG>(
         &self,
         size: Bytes,
         (src, dst): (NodeId, NodeId),
-        mut rng: R,
+        mut rng: RNG,
     ) -> Option<Nanosecs>
     where
-        R: Rng,
+        RNG: Rng,
     {
         let channels = self
             .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
@@ -648,9 +674,14 @@ impl DelayNetwork {
     /// `dst`.
     ///
     /// Slowdown is defined as the measured FCT divided by the ideal FCT.
-    pub fn slowdown<R>(&self, size: Bytes, (src, dst): (NodeId, NodeId), mut rng: R) -> Option<f64>
+    pub fn slowdown<RNG>(
+        &self,
+        size: Bytes,
+        (src, dst): (NodeId, NodeId),
+        mut rng: RNG,
+    ) -> Option<f64>
     where
-        R: Rng,
+        RNG: Rng,
     {
         let channels = self
             .edge_indices_between(src, dst, |choices| choices.choose(&mut rng))
@@ -688,20 +719,23 @@ impl DelayNetwork {
     }
 }
 
-impl TraversableNetwork<EDistChannel> for DelayNetwork {
+impl<R> TraversableNetwork<EDistChannel, R> for DelayNetwork<R>
+where
+    R: RoutingAlgo,
+{
     fn topology(&self) -> &Topology<EDistChannel> {
         &self.topology
     }
 
-    fn routes(&self) -> &BfsRoutes {
+    fn routes(&self) -> &R {
         &self.routes
     }
 }
 
-pub(crate) trait TraversableNetwork<C: Clone + Channel> {
+pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
     fn topology(&self) -> &Topology<C>;
 
-    fn routes(&self) -> &BfsRoutes;
+    fn routes(&self) -> &R;
 
     fn nr_edges(&self) -> usize {
         self.topology().nr_edges()

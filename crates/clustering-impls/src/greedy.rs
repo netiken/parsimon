@@ -6,6 +6,7 @@ use dashmap::DashMap;
 use parsimon_core::{
     cluster::{Cluster, ClusteringAlgo},
     network::{types::FlowChannel, EdgeIndex, Flow, SimNetwork},
+    routing::RoutingAlgo,
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
@@ -25,7 +26,10 @@ where
     G: Fn(&X, &X) -> bool + Sync,
     X: Clone + Send + Sync,
 {
-    fn cluster(&self, network: &SimNetwork) -> Vec<Cluster> {
+    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    where
+        R: RoutingAlgo + Sync,
+    {
         let features = Features::new(network, &self.feature);
         let mut unclustered_edges = network.edge_indices().collect::<FxHashSet<_>>();
         let mut clusters = Vec::new();
@@ -55,17 +59,18 @@ where
 }
 
 #[derive(derive_new::new)]
-struct Features<'a, F, X> {
-    network: &'a SimNetwork,
+struct Features<'a, F, X, R> {
+    network: &'a SimNetwork<R>,
     feature: F,
     #[new(default)]
     cache: DashMap<EdgeIndex, X>,
 }
 
-impl<'a, F, X> Features<'a, F, X>
+impl<'a, F, X, R> Features<'a, F, X, R>
 where
     F: Fn(&FlowChannel, &[Flow]) -> X + Sync,
     X: Clone + Send + Sync,
+    R: RoutingAlgo + Sync,
 {
     fn get(&self, eidx: EdgeIndex) -> X {
         self.cache

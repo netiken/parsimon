@@ -1,0 +1,121 @@
+---
+source: crates/parsimon-core/src/network/topology.rs
+expression: topo.graph
+---
+nodes:
+  - id: 0
+    kind: Host
+  - id: 1
+    kind: Host
+  - id: 2
+    kind: Host
+  - id: 3
+    kind: Host
+  - id: 4
+    kind: Switch
+  - id: 5
+    kind: Switch
+  - id: 6
+    kind: Switch
+  - id: 7
+    kind: Switch
+node_holes: []
+edge_property: directed
+edges:
+  - - 0
+    - 4
+    - src: 0
+      dst: 4
+      bandwidth: 10000000000
+      delay: 1000
+  - - 4
+    - 0
+    - src: 4
+      dst: 0
+      bandwidth: 10000000000
+      delay: 1000
+  - - 1
+    - 4
+    - src: 1
+      dst: 4
+      bandwidth: 10000000000
+      delay: 1000
+  - - 4
+    - 1
+    - src: 4
+      dst: 1
+      bandwidth: 10000000000
+      delay: 1000
+  - - 2
+    - 5
+    - src: 2
+      dst: 5
+      bandwidth: 10000000000
+      delay: 1000
+  - - 5
+    - 2
+    - src: 5
+      dst: 2
+      bandwidth: 10000000000
+      delay: 1000
+  - - 3
+    - 5
+    - src: 3
+      dst: 5
+      bandwidth: 10000000000
+      delay: 1000
+  - - 5
+    - 3
+    - src: 5
+      dst: 3
+      bandwidth: 10000000000
+      delay: 1000
+  - - 4
+    - 6
+    - src: 4
+      dst: 6
+      bandwidth: 10000000000
+      delay: 1000
+  - - 6
+    - 4
+    - src: 6
+      dst: 4
+      bandwidth: 10000000000
+      delay: 1000
+  - - 4
+    - 7
+    - src: 4
+      dst: 7
+      bandwidth: 10000000000
+      delay: 1000
+  - - 7
+    - 4
+    - src: 7
+      dst: 4
+      bandwidth: 10000000000
+      delay: 1000
+  - - 5
+    - 6
+    - src: 5
+      dst: 6
+      bandwidth: 10000000000
+      delay: 1000
+  - - 6
+    - 5
+    - src: 6
+      dst: 5
+      bandwidth: 10000000000
+      delay: 1000
+  - - 5
+    - 7
+    - src: 5
+      dst: 7
+      bandwidth: 10000000000
+      delay: 1000
+  - - 7
+    - 5
+    - src: 7
+      dst: 5
+      bandwidth: 10000000000
+      delay: 1000
+
