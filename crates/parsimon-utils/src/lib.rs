@@ -29,6 +29,7 @@ pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
     let contents = std::fs::read_to_string(path.as_ref())?;
     let flows: Vec<Flow> = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
         Some("json") => serde_json::from_str(&contents)?,
+        Some("msgpack") => rmp_serde::decode::from_slice(contents.as_bytes())?,
         _ => return Err(Error::UnknownFileType(path.as_ref().into())),
     };
     Ok(flows)
@@ -57,6 +58,10 @@ pub enum Error {
     /// Error serializing/deserializing JSON.
     #[error("JSON error")]
     Json(#[from] serde_json::Error),
+
+    /// Error serializing/deserializing MsgPack.
+    #[error("MsgPack error")]
+    MsgPack(#[from] rmp_serde::decode::Error),
 
     /// I/O error.
     #[error("IO error")]
