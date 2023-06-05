@@ -2,6 +2,8 @@
 
 #![warn(unreachable_pub, missing_debug_implementations, missing_docs)]
 
+use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use parsimon_core::network::types::{Link, Node};
@@ -26,10 +28,16 @@ pub fn read_topology_spec(path: impl AsRef<Path>) -> Result<TopologySpec, Error>
 
 /// Read [`Flow`]s from a file in JSON format>
 pub fn read_flows(path: impl AsRef<Path>) -> Result<Vec<Flow>, Error> {
-    let contents = std::fs::read_to_string(path.as_ref())?;
     let flows: Vec<Flow> = match path.as_ref().extension().and_then(|ext| ext.to_str()) {
-        Some("json") => serde_json::from_str(&contents)?,
-        Some("msgpack") => rmp_serde::decode::from_slice(contents.as_bytes())?,
+        Some("json") => {
+            let contents = std::fs::read_to_string(path.as_ref())?;
+            serde_json::from_str(&contents)?
+        }
+        Some("msgpack") => {
+            let f = File::open(path)?;
+            let reader = BufReader::new(f);
+            rmp_serde::decode::from_read(reader)?
+        }
         _ => return Err(Error::UnknownFileType(path.as_ref().into())),
     };
     Ok(flows)
