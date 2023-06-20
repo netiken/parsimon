@@ -8,6 +8,9 @@ version.workspace = true
 [dependencies]
 dashmap = "5.4.0"
 derive-new = { workspace = true }
+env_logger = "0.10.0"
+indicatif = "0.17.5"
+log = "0.4.19"
 parsimon-core = { version = "0.1.0", path = "../parsimon-core" }
 rayon = { workspace = true }
 rustc-hash = "1.1.0"

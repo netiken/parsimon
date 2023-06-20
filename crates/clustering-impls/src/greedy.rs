@@ -2,6 +2,9 @@
 
 use std::collections::HashSet;
 
+use indicatif::ProgressBar;
+use log::info;
+
 use dashmap::DashMap;
 use parsimon_core::{
     cluster::{Cluster, ClusteringAlgo},
@@ -33,8 +36,15 @@ where
         let features = Features::new(network, &self.feature);
         let mut unclustered_edges = network.edge_indices().collect::<FxHashSet<_>>();
         let mut clusters = Vec::new();
+        info!("Clustering edges into representatives");
+        let bar = ProgressBar::new_spinner();
         // Every time we remove an element, it becomes the next cluster representative.
         while let Some(&representative) = unclustered_edges.iter().next() {
+            let num_clusters_total = clusters.len();
+            let num_edges_left = unclustered_edges.len();
+            bar.set_message(format!(
+                "Processing {num_clusters_total} representative. {num_edges_left} unclustered edges remaining"
+            ));
             unclustered_edges.remove(&representative);
             let rfeat = features.get(representative);
             let mut members = [representative].into_iter().collect::<HashSet<_>>();
@@ -54,6 +64,7 @@ where
             // We're done with this cluster.
             clusters.push(Cluster::new(representative, members));
         }
+        bar.finish_and_clear();
         clusters
     }
 }

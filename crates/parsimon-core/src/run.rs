@@ -13,6 +13,7 @@ where
     S: LinkSim + Sync,
     C: ClusteringAlgo,
 {
+    env_logger::init();
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
     let mut sims = spec.network.into_simulations(flows);

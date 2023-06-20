@@ -10,7 +10,9 @@ pub mod types;
 
 use std::{collections::HashMap, net::SocketAddr};
 
+use indicatif::ProgressBar;
 use itertools::Itertools;
+use log::info;
 use petgraph::graph::NodeIndex;
 use rand::prelude::*;
 use rayon::prelude::*;
@@ -255,6 +257,8 @@ where
     {
         let (s, r) = crossbeam_channel::unbounded();
         // Simulate all cluster representatives in parallel.
+        info!("Simulating locally");
+        let bar = ProgressBar::new(self.clusters.len() as u64);
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
             let data = match self.link_sim_desc(edge) {
@@ -275,9 +279,11 @@ where
                 }
                 None => Vec::new(),
             };
+            bar.inc(1);
             s.send((edge, data)).unwrap(); // the channel should never become disconnected
             Result::<(), SimNetworkError>::Ok(())
         })?;
+        bar.finish_and_clear();
         Ok(r.iter().collect())
     }
 
@@ -289,6 +295,7 @@ where
     where
         S: LinkSim + Sync,
     {
+        info!("Simulating on workers");
         let sim = (sim.name(), serde_json::to_string(&sim)?);
         let assignments = self.assign_work_randomly(workers);
         let assignments = assignments
@@ -321,6 +328,7 @@ where
             })
             .collect::<Vec<_>>();
         let rt = tokio::runtime::Runtime::new()?;
+        let bar = ProgressBar::new(assignments.len() as u64);
         let results = rt.block_on(async {
             let handles = assignments
                 .into_iter()
@@ -330,8 +338,10 @@ where
             for handle in handles {
                 results.append(&mut handle.await??);
             }
+            bar.inc(1);
             Result::<_, SimNetworkError>::Ok(results)
         })?;
+        bar.finish_and_clear();
         Ok(results
             .into_iter()
             .map(|(edge, records)| (EdgeIndex::new(edge), records))

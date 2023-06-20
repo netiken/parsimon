@@ -4,11 +4,9 @@
 
 use std::collections::HashSet;
 
-use crate::{
-    network::{
-        types::{Link, Node, NodeId},
-        Flow, FlowId, Network, NodeKind, TopologyError,
-    },
+use crate::network::{
+    types::{Link, Node, NodeId},
+    Flow, FlowId, Network, NodeKind, TopologyError,
 };
 
 /// A simulation specification.
