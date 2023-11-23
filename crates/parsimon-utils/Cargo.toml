@@ -8,8 +8,8 @@ version.workspace = true
 [dependencies]
 linksim-impls = { path = "../linksim-impls" }
 parsimon-core = { path = "../parsimon-core" }
-rmp-serde = "1.1.1"
+rmp-serde = "1.1.2"
 serde = { workspace = true }
-serde_dhall = "0.12.0"
-serde_json = "1.0.85"
+serde_dhall = "0.12.1"
+serde_json = "1.0.108"
 thiserror = { workspace = true }
