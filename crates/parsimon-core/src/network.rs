@@ -34,10 +34,7 @@ use crate::{
     utils,
 };
 
-use self::{
-    topology::Topology,
-    types::{BasicChannel, EDistChannel, FlowChannel, Link, Node},
-};
+use self::{topology::Topology, types::EDistChannel};
 
 /// A `Network` is a collection of nodes, links, and routes.
 #[derive(Debug, Clone)]
@@ -80,21 +77,25 @@ where
             let mut assignments = Vec::new();
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
-                let path = self.edge_indices_between(src, dst, |choices| {
-                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
-                    let idx = hash as usize % choices.len();
-                    Some(&choices[idx])
-                });
+                let path =
+                    self.edge_indices_between(src, dst, |choices| {
+                        assert!(!choices.is_empty(), "missing path from {src} to {dst}");
+                        let idx = hash as usize % choices.len();
+                        Some(&choices[idx])
+                    });
                 for eidx in path {
                     assignments.push((eidx, f));
                 }
             }
             assignments
         })
-        .fold(FxHashMap::default(), |mut map, (e, f)| {
-            map.entry(e).or_insert(Vec::new()).push(f);
-            map
-        });
+        .fold(
+            FxHashMap::default(),
+            |mut map: FxHashMap<_, Vec<_>>, (e, f)| {
+                map.entry(e).or_default().push(f);
+                map
+            },
+        );
         let assignments = assignments
             .into_par_iter()
             .map(|(eidx, mut flows)| {
@@ -305,13 +306,14 @@ where
                     .collect::<FxHashSet<_>>()
                     .into_iter()
                     .collect::<Vec<_>>();
-                let flows = utils::par_chunks(&flows, |flows| {
-                    flows
-                        .iter()
-                        .map(|&id| self.flows.get(id).unwrap().to_owned())
-                        .collect()
-                })
-                .collect();
+                let flows =
+                    utils::par_chunks(&flows, |flows| {
+                        flows
+                            .iter()
+                            .map(|&id| self.flows.get(id).unwrap().to_owned())
+                            .collect()
+                    })
+                    .collect();
                 let params = WorkerParams {
                     link_sim: sim.clone(),
                     descs,
@@ -455,7 +457,7 @@ where
         let nodes = srcs
             .iter()
             .chain(dsts.iter())
-            .chain([&bsrc, &bdst].into_iter())
+            .chain([&bsrc, &bdst])
             .unique()
             .map(|&id| {
                 let Node { kind, .. } = self.node(id).unwrap();
@@ -750,10 +752,11 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
         let mut acc = Vec::new();
         let mut cur = src;
         while cur != dst {
-            let next_hop_choices = match self.routes().next_hops(cur, dst) {
-                Some(hops) => hops,
-                None => break,
-            };
+            let next_hop_choices =
+                match self.routes().next_hops(cur, dst) {
+                    Some(hops) => hops,
+                    None => break,
+                };
             match choose(&next_hop_choices) {
                 Some(&next_hop) => {
                     // These indices are all guaranteed to exist because we have a valid topology

@@ -9,6 +9,7 @@ members = [
     "crates/ns3-frontend",
     "examples/poisson",
 ]
+resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
