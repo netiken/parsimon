@@ -9,6 +9,10 @@ members = [
     "crates/ns3-frontend",
     "examples/poisson",
 ]
+exclude =[
+    "backends/High-Precision-Congestion-Control/gen_path",
+    "backends/High-Precision-Congestion-Control/gen_path_empirical",
+]
 resolver = "2"
 
 [workspace.package]
