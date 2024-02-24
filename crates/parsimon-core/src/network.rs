@@ -72,56 +72,30 @@ where
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
     pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
-        println!("lichenni: {:?}", flows.len());
-
         let mut topology = Topology::new_traced(&self.topology);
-
-        let (assignments, path_to_flowid_map): (Vec<_>, _) = utils::par_chunks(&flows, |flows| {
+        let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
-            let mut path_to_flowid_map_cur:FxHashMap<Vec<(NodeId, NodeId)>, Vec<FlowId>> = FxHashMap::default(); // Use FxHashMap instead of HashMap
-
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
-        
-                let path = self.edge_indices_between(src, dst, |choices| {
-                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
-                    let idx = hash as usize % choices.len();
-                    Some(&choices[idx])
-                });
-        
-                let mut path_vec = Vec::new();
+                let path =
+                    self.edge_indices_between(src, dst, |choices| {
+                        assert!(!choices.is_empty(), "missing path from {src} to {dst}");
+                        let idx = hash as usize % choices.len();
+                        Some(&choices[idx])
+                    });
                 for eidx in path {
                     assignments.push((eidx, f));
-                    path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }
-        
-                path_to_flowid_map_cur.entry(path_vec.clone()).or_default().push(id);
             }
-        
-            (assignments, path_to_flowid_map_cur)
+            assignments
         })
         .fold(
-            (FxHashMap::default(), FxHashMap::default()),
-            |(mut assignments_map, mut path_to_flowid_map): (
-                FxHashMap<EdgeIndex, Vec<Flow>>, 
-                FxHashMap<Vec<(NodeId, NodeId)>, Vec<FlowId>>
-            ), (assignments, path_to_flowid_map_cur)| {
-                // Merge assignments
-                for (e, f) in assignments {
-                    assignments_map.entry(e).or_default().push(f);
-                }
-        
-                // Merge path_to_flowid_map
-                for (path, flows) in path_to_flowid_map_cur {
-                    path_to_flowid_map.entry(path).or_default().extend(flows);
-                }
-        
-                (assignments_map, path_to_flowid_map)
+            FxHashMap::default(),
+            |mut map: FxHashMap<_, Vec<_>>, (e, f)| {
+                map.entry(e).or_default().push(f);
+                map
             },
         );
-
-        println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len(), path_to_flowid_map.len());
-
         let assignments = assignments
             .into_par_iter()
             .map(|(eidx, mut flows)| {
@@ -149,7 +123,54 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
-            path_to_flowid_map: path_to_flowid_map,
+        }
+    }
+    /// Creates a `SimNetwork` for path.
+    pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
+        println!("lichenni: {:?}", flows.len());
+
+        let mut topology = Topology::new_traced(&self.topology);
+
+        let assignments = utils::par_chunks(&flows, |flows| {
+            let mut assignments = Vec::new();
+            for &f @ Flow { id, src, dst, .. } in flows {
+                let hash = utils::calculate_hash(&id);
+        
+                let path = self.edge_indices_between(src, dst, |choices| {
+                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
+                    let idx = hash as usize % choices.len();
+                    Some(&choices[idx])
+                });
+        
+                let mut path_vec = Vec::new();
+                for eidx in path {
+                    path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
+                }   
+                assignments.push((path_vec, id));
+            }    
+            assignments
+        })
+        .fold(
+            FxHashMap::default(),
+            |mut map: FxHashMap<_, Vec<_>>, (p, f)| {
+                map.entry(e).or_default().push(f);
+                map
+            },
+        );
+
+        println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len());
+
+        let clusters = topology
+            .graph
+            .edge_indices()
+            .map(|eidx| Cluster::new(eidx, [eidx].into_iter().collect()))
+            .collect();
+        SimNetwork {
+            topology,
+            routes: self.routes,
+            clusters,
+            flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+            path_to_flowid_map: assignments,
         }
     }
 
