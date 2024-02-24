@@ -77,9 +77,9 @@ where
         let mut topology = Topology::new_traced(&self.topology);
 
         let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
-            let mut assignments: Vec<(EdgeIndex, Flow)> = Vec::new();
-            let mut path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, Vec<Flow>> = FxHashMap::default();
-        
+            let mut assignments = Vec::new();
+            let mut path_to_flowid_map = FxHashMap::default(); // Use FxHashMap instead of HashMap
+
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
         
@@ -102,7 +102,10 @@ where
         })
         .fold(
             (FxHashMap::default(), FxHashMap::default()),
-            |(mut assignments_map, mut path_to_flowid_map), (assignments, current_path_to_flowid_map)| {
+            |(mut assignments_map, mut path_to_flowid_map): (
+                FxHashMap<EdgeIndex, Vec<Flow>>, // Assuming EdgeIndex is the key type
+                FxHashMap<Vec<(NodeId, NodeId)>, Vec<FlowId>>, // Assuming NodeId is a tuple and YourValueType is the value type
+            ), (assignments, current_path_to_flowid_map)| {
                 // Merge assignments
                 for (e, f) in assignments {
                     assignments_map.entry(e).or_default().push(f);
@@ -118,7 +121,7 @@ where
         );
 
         println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len(), path_to_flowid_map.len());
-        
+
         let assignments = assignments
             .into_par_iter()
             .map(|(eidx, mut flows)| {
