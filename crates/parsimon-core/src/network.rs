@@ -78,7 +78,7 @@ where
 
         let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
-            let mut path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, HashSet<usize>> = FxHashMap::default();
+            let mut path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>> = FxHashMap::default();
 
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
@@ -95,7 +95,7 @@ where
                     path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }
 
-                path_to_flowid_map.entry(path_vec.clone()).or_default().insert(id as usize);
+                path_to_flowid_map.entry(path_vec.clone()).or_default().insert(id);
             }
 
             (assignments, path_to_flowid_map)
@@ -215,7 +215,7 @@ pub struct SimNetwork<R = BfsRoutes> {
     clusters: Vec<Cluster>,
     // Each channel references these flows by ID
     flows: HashMap<FlowId, Flow>,
-    path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, HashSet<usize>>;
+    path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>,
 }
 
 impl<R> SimNetwork<R>
