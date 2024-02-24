@@ -76,7 +76,7 @@ where
 
         let mut topology = Topology::new_traced(&self.topology);
 
-        let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
+        let (assignments, path_to_flowid_map): (Vec<_>, _) = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
             let mut path_to_flowid_map_cur:FxHashMap<Vec<(NodeId, NodeId)>, Vec<FlowId>> = FxHashMap::default(); // Use FxHashMap instead of HashMap
 
@@ -95,7 +95,7 @@ where
                     path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }
         
-                path_to_flowid_map_cur.entry(path_vec.clone()).or_default().push(f);
+                path_to_flowid_map_cur.entry(path_vec.clone()).or_default().push(id);
             }
         
             (assignments, path_to_flowid_map_cur)
