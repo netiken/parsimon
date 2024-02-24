@@ -441,10 +441,15 @@ where
     pub fn clusters(&self) -> &[Cluster] {
         self.clusters.as_ref()
     }
-
+    
     /// Sets the `SimNetwork`'s clusters.
     pub fn set_clusters(&mut self, clusters: Vec<Cluster>) {
         self.clusters = clusters;
+    }
+
+    /// get path_to_flowid_map
+    pub fn get_path_to_flowid_map(&self) -> Option<&FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>> {
+        self.path_to_flowid_map.as_ref()
     }
 
     /// Returns a path from `src` to `dst`, using `choose` to select a path when there are multiple
