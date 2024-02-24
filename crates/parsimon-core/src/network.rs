@@ -123,6 +123,7 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+            path_to_flowid_map: None,
         }
     }
     /// Creates a `SimNetwork` for path.
@@ -158,14 +159,14 @@ where
             },
         );
 
-        println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len());
+        println!("assignments: {:?}", assignments.len());
 
         let path_to_flowid_map = if assignments.is_empty() {
             None
         } else {
             Some(assignments)
         };
-        
+
         let clusters = topology
             .graph
             .edge_indices()
