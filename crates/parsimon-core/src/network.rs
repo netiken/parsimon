@@ -220,7 +220,7 @@ pub struct SimNetwork<R = BfsRoutes> {
     // Each channel references these flows by ID
     flows: HashMap<FlowId, Flow>,
     
-    path_to_flowid_map: Option<FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>>,
+    path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>,
 }
 
 impl<R> SimNetwork<R>
