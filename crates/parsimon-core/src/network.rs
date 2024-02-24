@@ -153,13 +153,19 @@ where
         .fold(
             FxHashMap::default(),
             |mut map: FxHashMap<_, Vec<_>>, (p, f)| {
-                map.entry(e).or_default().push(f);
+                map.entry(p).or_default().push(f);
                 map
             },
         );
 
         println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len());
 
+        let path_to_flowid_map = if assignments.is_empty() {
+            None
+        } else {
+            Some(assignments)
+        };
+        
         let clusters = topology
             .graph
             .edge_indices()
@@ -241,7 +247,7 @@ pub struct SimNetwork<R = BfsRoutes> {
     // Each channel references these flows by ID
     flows: HashMap<FlowId, Flow>,
     
-    path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>,
+    Option<FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>>,
 }
 
 impl<R> SimNetwork<R>
