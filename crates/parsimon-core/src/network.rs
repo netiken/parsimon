@@ -177,7 +177,7 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
-            path_to_flowid_map: assignments,
+            path_to_flowid_map: path_to_flowid_map,
         }
     }
 
