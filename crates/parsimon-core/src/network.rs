@@ -72,6 +72,7 @@ where
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
     pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
+        println!("lichenni: {:?}", flows.len());
         let mut topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
