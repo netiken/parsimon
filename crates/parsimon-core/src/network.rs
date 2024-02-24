@@ -77,8 +77,8 @@ where
         let mut topology = Topology::new_traced(&self.topology);
 
         let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
-            let mut assignments = Vec::new();
-            let mut path_to_flowid_map = Vec::new(); // Specify the type or use `Vec::<_>::new()`
+            let mut assignments: Vec<(EdgeIndex, Flow)> = Vec::new();
+            let mut path_to_flowid_map: Vec<(Vec<(NodeId, NodeId)>, Flow)> = Vec::new();
         
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
