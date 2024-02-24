@@ -73,30 +73,51 @@ where
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
     pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
         println!("lichenni: {:?}", flows.len());
+
         let mut topology = Topology::new_traced(&self.topology);
-        let assignments = utils::par_chunks(&flows, |flows| {
+
+        let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
+            let mut path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, HashSet<usize>> = FxHashMap::default();
+
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
-                let path =
-                    self.edge_indices_between(src, dst, |choices| {
-                        assert!(!choices.is_empty(), "missing path from {src} to {dst}");
-                        let idx = hash as usize % choices.len();
-                        Some(&choices[idx])
-                    });
+
+                let path = self.edge_indices_between(src, dst, |choices| {
+                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
+                    let idx = hash as usize % choices.len();
+                    Some(&choices[idx])
+                });
+
+                let mut path_vec = Vec::new();
                 for eidx in path {
                     assignments.push((eidx, f));
+                    path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }
+
+                path_to_flowid_map.entry(path_vec.clone()).or_default().insert(id as usize);
             }
-            assignments
+
+            (assignments, path_to_flowid_map)
         })
         .fold(
-            FxHashMap::default(),
-            |mut map: FxHashMap<_, Vec<_>>, (e, f)| {
-                map.entry(e).or_default().push(f);
-                map
+            (FxHashMap::default(), FxHashMap::default()),
+            |(mut assignments_map, mut path_to_flowid_map), (assignments, current_path_to_flowid_map)| {
+                // Merge assignments
+                for (e, f) in assignments {
+                    assignments_map.entry(e).or_default().push(f);
+                }
+
+                // Merge path_to_flowid_map
+                for (path, flow_ids) in current_path_to_flowid_map {
+                    path_to_flowid_map.entry(path).or_default().extend(flow_ids);
+                }
+
+                (assignments_map, path_to_flowid_map)
             },
         );
+
+        println!("assignments: {:?}, path_to_flowid_map: {:?}", assignments.len(), path_to_flowid_map.len());
         let assignments = assignments
             .into_par_iter()
             .map(|(eidx, mut flows)| {
@@ -124,6 +145,7 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+            path_to_flowid_map: path_to_flowid_map,
         }
     }
 
@@ -193,6 +215,7 @@ pub struct SimNetwork<R = BfsRoutes> {
     clusters: Vec<Cluster>,
     // Each channel references these flows by ID
     flows: HashMap<FlowId, Flow>,
+    path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, HashSet<usize>>;
 }
 
 impl<R> SimNetwork<R>
