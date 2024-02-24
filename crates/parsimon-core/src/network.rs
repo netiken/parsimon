@@ -78,26 +78,27 @@ where
 
         let (assignments, path_to_flowid_map) = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
-            let mut path_to_flowid_map: FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>> = FxHashMap::default();
-
+            let mut path_to_flowid_map = Vec::new(); // Specify the type or use `Vec::<_>::new()`
+        
             for &f @ Flow { id, src, dst, .. } in flows {
                 let hash = utils::calculate_hash(&id);
-
+        
                 let path = self.edge_indices_between(src, dst, |choices| {
                     assert!(!choices.is_empty(), "missing path from {src} to {dst}");
                     let idx = hash as usize % choices.len();
                     Some(&choices[idx])
                 });
-
+        
                 let mut path_vec = Vec::new();
                 for eidx in path {
                     assignments.push((eidx, f));
                     path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }
-
-                path_to_flowid_map.entry(path_vec.clone()).or_default().insert(id);
+        
+                // Push a tuple containing `path_vec` and `f` to `path_to_flowid_map`
+                path_to_flowid_map.push((path_vec, f));
             }
-
+        
             (assignments, path_to_flowid_map)
         })
         .fold(
@@ -107,12 +108,13 @@ where
                 for (e, f) in assignments {
                     assignments_map.entry(e).or_default().push(f);
                 }
-
+        
                 // Merge path_to_flowid_map
-                for (path, flow_ids) in current_path_to_flowid_map {
-                    path_to_flowid_map.entry(path).or_default().extend(flow_ids);
+                for (path, flow) in current_path_to_flowid_map {
+                    // Assuming `flow` here is the `f` from the loop above
+                    path_to_flowid_map.entry(path).or_default().push(flow);
                 }
-
+        
                 (assignments_map, path_to_flowid_map)
             },
         );
