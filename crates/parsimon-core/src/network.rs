@@ -128,8 +128,6 @@ where
     }
     /// Creates a `SimNetwork` for path.
     pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
-        println!("lichenni: {:?}", flows.len());
-
         let mut topology = Topology::new_traced(&self.topology);
 
         let assignments = utils::par_chunks(&flows, |flows| {
@@ -142,8 +140,9 @@ where
                     let idx = hash as usize % choices.len();
                     Some(&choices[idx])
                 });
-        
+                
                 let mut path_vec = Vec::new();
+                path_vec.push((src, dst));
                 for eidx in path {
                     path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 }   
