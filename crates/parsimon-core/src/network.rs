@@ -153,8 +153,8 @@ where
         })
         .fold(
             FxHashMap::default(),
-            |mut map: FxHashMap<_, Vec<_>>, (p, f)| {
-                map.entry(p).or_default().push(f);
+            |mut map: FxHashMap<_, FxHashSet<_>>, (p, f)| {
+                map.entry(p).or_default().insert(f);
                 map
             },
         );
