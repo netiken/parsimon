@@ -35,10 +35,6 @@ impl Node {
             kind: NodeKind::Switch,
         }
     }
-
-    pub fn get_id(&self) -> usize {
-        self.id.0
-    }
 }
 
 /// A node is either a host or a switch.
@@ -52,9 +48,8 @@ pub enum NodeKind {
 
 identifier!(NodeId, usize);
 impl NodeId {
-    pub fn as_u32(&self) -> u32 {
-        // Implement conversion logic here
-        self.0 as u32
+    pub fn as_usize(&self) -> usize {
+        self.0
     }
 }
 /// A link is a bidirectional channel connecting two [nodes](Node).

@@ -136,7 +136,7 @@ where
         for node in topology.graph.node_indices() {
             let node = &topology.graph[node];
             if let NodeKind::Host = node.kind {
-                let node_id:usize = node.get_id().into();
+                let node_id:usize = node.id.as_usize();
                 server_address[node_id] = utils::node_id_to_ip(node_id);
             }
         }
@@ -895,7 +895,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             };
             
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
-                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
+                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur.as_usize() as u32);
                 let tmp=(hash % next_hop_choices.len() as u32) as usize;
 
                 // Print input parameters
