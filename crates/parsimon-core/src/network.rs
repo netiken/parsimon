@@ -899,7 +899,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
                 println!("Key: {:?}", buf);
                 println!("Length of key: {}", buf.len());
                 println!("Seed value: {}", cur);
-                println!("Hash value: {}", tmp);
+                println!("Index: {}", tmp);
                 tmp
             } else {
                 0 // For host nodes, always choose the first next hop
