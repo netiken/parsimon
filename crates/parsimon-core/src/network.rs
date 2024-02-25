@@ -895,11 +895,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
                 let tmp=next_hop_choices.len()-1-(hash % next_hop_choices.len() as u64) as usize;
 
                 // Print input parameters
-                println!("next_hop_choices: {:?}", next_hop_choices);
-                println!("Key: {:?}", buf);
-                println!("Length of key: {}", buf.len());
-                println!("Seed value: {}", cur);
-                println!("Index: {}", tmp);
+                println!("next_hop_choices: {:?}\nKey: {:?}\nLength of key: {}\nSeed value: {}\nIndex: {}", next_hop_choices,buf,buf.len(),cur,tmp);
                 tmp
             } else {
                 0 // For host nodes, always choose the first next hop
