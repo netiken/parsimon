@@ -884,7 +884,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
         while cur != dst {
             let next_hop_choices = match self.routes().next_hops(cur, dst) {
                 Some(mut hops) => {
-                    hops.sort(); // Sort the next_hop_choices
+                    // hops.sort(); // Sort the next_hop_choices
                     hops
                 },
                 None => break,
@@ -892,7 +892,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             // println!("next_hop_choices: {:?}", next_hop_choices);
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
                 let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
-                (hash % next_hop_choices.len() as u64) as usize
+                next_hop_choices.len()-1-(hash % next_hop_choices.len() as u64) as usize
             } else {
                 0 // For host nodes, always choose the first next hop
             };
