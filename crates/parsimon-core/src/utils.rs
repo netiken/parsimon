@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use crate::network::{Channel, Flow};
 use crate::units::{Bytes, Gbps, Nanosecs};
 use std::net::Ipv4Addr;
+use crate::network::types::{NodeId};
 
 pub(crate) fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
@@ -29,13 +30,13 @@ pub(crate) fn ip_to_node_id(ip: Ipv4Addr) -> usize {
     ((ip.octets()[0] as usize) << 24) | ((ip.octets()[1] as usize) << 16)
 }
 
-pub(crate) fn calculate_hash_ns3(key: &[u8], len: usize, seed: usize) -> u64 {
+pub(crate) fn calculate_hash_ns3(key: &[u8], len: usize, seed: NodeId) -> u64 {
     // Print input parameters
     println!("Key: {:?}", key);
     println!("Length of key: {}", len);
     println!("Seed value: {}", seed);
 
-    let seed_u32 = seed as u32; // Convert seed to u32 for compatibility with the algorithm
+    let seed_u32 = seed.as_u32(); // Convert seed to u32 for compatibility with the algorithm
 
     let mut h = seed_u32 as u64; // Convert h to u64
     let mut key_x4 = key;

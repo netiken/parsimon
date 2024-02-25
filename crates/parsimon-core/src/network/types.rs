@@ -51,7 +51,12 @@ pub enum NodeKind {
 }
 
 identifier!(NodeId, usize);
-
+impl NodeId {
+    pub fn as_u32(&self) -> u32 {
+        // Implement conversion logic here
+        self.0 as u32
+    }
+}
 /// A link is a bidirectional channel connecting two [nodes](Node).
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Link {

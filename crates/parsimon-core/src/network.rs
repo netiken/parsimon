@@ -178,14 +178,7 @@ where
                 buf[10..12].copy_from_slice(&100u16.to_be_bytes());
                 buf[10..12].reverse();
 
-                // Pass parameters to calculate_hash_ns3
-                let hash = utils::calculate_hash_ns3(&buf, 12, ids[0]);
-        
-                let path = self.edge_indices_between(src, dst, |choices| {
-                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
-                    let idx = hash as usize % choices.len();
-                    Some(&choices[idx])
-                });
+                let path = self.edge_indices_between_ns3(src, dst, &buf);
                 
                 let mut path_vec = Vec::new();
                 path_vec.push((src, dst));
@@ -878,6 +871,37 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             }
         }
         acc.into_iter()
+    }
+
+    fn edge_indices_between_ns3(
+        &self,
+        src: NodeId,
+        dst: NodeId,
+        buf: &[u8],
+    ) -> Vec<EdgeIndex> {
+        let mut acc = Vec::new();
+        let mut cur = src;
+        while cur != dst {
+            let next_hop_choices = match self.routes().next_hops(cur, dst) {
+                Some(hops) => hops,
+                None => break,
+            };
+    
+            let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
+    
+            // Choose next hop based on hash
+            let idx = (hash % next_hop_choices.len() as u64) as usize;
+            let next_hop = next_hop_choices[idx];
+    
+            // These indices are all guaranteed to exist because we have a valid topology
+            let i = *self.topology().idx_of(&cur).unwrap();
+            let j = *self.topology().idx_of(&next_hop).unwrap();
+            let e = self.topology().find_edge(i, j).unwrap();
+            acc.push(e);
+    
+            cur = next_hop;
+        }
+        acc
     }
 
     fn path(
