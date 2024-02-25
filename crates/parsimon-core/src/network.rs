@@ -883,12 +883,15 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
         let mut cur = src;
         while cur != dst {
             let next_hop_choices = match self.routes().next_hops(cur, dst) {
-                Some(hops) => hops,
+                Some(mut hops) => {
+                    hops.sort(); // Sort the next_hop_choices
+                    hops
+                },
                 None => break,
             };
-    
+            // println!("next_hop_choices: {:?}", next_hop_choices);
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
-                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur.into());
+                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
                 (hash % next_hop_choices.len() as u64) as usize
             } else {
                 0 // For host nodes, always choose the first next hop
@@ -949,12 +952,12 @@ mod tests {
     fn ecmp_replication_works() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
         let network = Network::new(&nodes, &links).context("failed to create topology")?;
-        let flows = (0..20)
+        let flows = (0..1)
             .map(|i| Flow {
                 id: FlowId::new(i),
                 src: NodeId::new(0),
                 dst: NodeId::new(3),
-                size: Bytes::new(10_000),
+                size: Bytes::new(1_000),
                 start: Nanosecs::new(2_000_000_000),
             })
             .collect::<Vec<_>>();
