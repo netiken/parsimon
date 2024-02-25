@@ -131,7 +131,7 @@ where
     pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
         let mut topology = Topology::new_traced(&self.topology);
         let node_num = topology.graph.node_count();
-        println!("node_num: {:?}", node_num);
+        // println!("node_num: {:?}", node_num);
         let mut server_address = vec![Ipv4Addr::UNSPECIFIED; node_num as usize];
         for node in topology.graph.node_indices() {
             let node = &topology.graph[node];
@@ -140,30 +140,43 @@ where
                 server_address[node_id] = utils::node_id_to_ip(node_id);
             }
         }
-        println!("server_address: {:?}", server_address);
+        // println!("server_address: {:?}", server_address);
+        // Maintain port number for each host
+        let mut port_number = vec![vec![10000; node_num]; node_num];
+        // Calculate port numbers in advance
+        let mut port_number_map: FxHashMap<usize, u16> = FxHashMap::default();
+        for &f in &flows {
+            let ids = f.get_ids();
+            let sport: u16 = port_number[ids[1]][ids[2]];
+            port_number[ids[1]][ids[2]] += 1;
+            port_number_map.entry(ids[0]).or_insert(sport);
+        }
+
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
             for &f @ Flow { id, src, dst, .. } in flows {
+                // Get the ids (i.e., ID, SRC, DST) as usize of the flow
                 let ids = f.get_ids(); 
                 let sip= server_address[ids[1]];
                 let sip_bytes = sip.octets();
-                let mut reversed_sip_bytes = [0; 4];
-                reversed_sip_bytes.copy_from_slice(&sip_bytes);
-                reversed_sip_bytes.reverse(); // Reverse the byte order of sip_bytes
+               
                 let dip= server_address[ids[2]];
                 let dip_bytes = dip.octets();
-                let mut reversed_dip_bytes = [0; 4];
-                reversed_dip_bytes.copy_from_slice(&dip_bytes);
-                reversed_dip_bytes.reverse(); // Reverse the byte order of dip_bytes
+               
+                let sport: u16 = port_number_map[&ids[0]];
 
                 // Create buffer and populate with sip, dip, and ports
                 let mut buf = [0u8; 4 + 4 + 2 + 2];
-                buf[0..4].copy_from_slice(&reversed_sip_bytes);
-                buf[4..8].copy_from_slice(&reversed_dip_bytes);
+                buf[0..4].copy_from_slice(&sip_bytes);
+                buf[0..4].reverse();
+                buf[4..8].copy_from_slice(&dip_bytes);
+                buf[4..8].reverse();
 
                 // Set ports based on your logic
-                buf[8..10].copy_from_slice(&100u16.to_be_bytes());
+                buf[8..10].copy_from_slice(&sport.to_be_bytes());
+                buf[8..10].reverse();
                 buf[10..12].copy_from_slice(&100u16.to_be_bytes());
+                buf[10..12].reverse();
 
                 // Pass parameters to calculate_hash_ns3
                 let hash = utils::calculate_hash_ns3(&buf, 12, ids[0]);
@@ -191,7 +204,7 @@ where
             },
         );
 
-        println!("assignments: {:?}", assignments.len());
+        // println!("assignments: {:?}", assignments.len());
 
         let path_to_flowid_map = if assignments.is_empty() {
             None
