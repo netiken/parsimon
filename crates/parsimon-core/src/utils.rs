@@ -30,42 +30,44 @@ pub(crate) fn ip_to_node_id(ip: Ipv4Addr) -> usize {
     ((ip.octets()[0] as usize) << 24) | ((ip.octets()[1] as usize) << 16)
 }
 
-pub(crate) fn calculate_hash_ns3(key: &[u8], len: usize, seed: NodeId) -> u64 {
-    let seed_u32 = seed.as_u32(); // Convert seed to u32 for compatibility with the algorithm
-
-    let mut h = seed_u32 as u64; // Convert h to u64
+pub(crate) fn calculate_hash_ns3(key: &[u8], len: usize, seed: NodeId) -> u32 {
+    let mut h = seed.as_u32(); // Convert seed to u32 for compatibility with the algorithm
     let mut key_x4 = key;
+
     if len > 3 {
         let key_x4_u32 = unsafe {
             std::slice::from_raw_parts(key.as_ptr() as *const u32, len / 4)
         };
 
         for &k in key_x4_u32 {
-            let mut k = k as u64;
+            let mut k = k;
             k = k.wrapping_mul(0xcc9e2d51);
             k = (k << 15) | (k >> 17);
             k = k.wrapping_mul(0x1b873593);
+
             h ^= k;
             h = (h << 13) | (h >> 19);
             h = h.wrapping_add(h << 2).wrapping_add(0xe6546b64);
         }
+        key_x4 = &key[len & !3..];
     }
 
     if len & 3 != 0 {
         let mut k = 0;
 
-        for &byte in key.iter().rev().take(len & 3) {
+        for &byte in key_x4.iter().rev() {
             k <<= 8;
-            k |= byte as u64;
+            k |= byte as u32;
         }
 
         k = k.wrapping_mul(0xcc9e2d51);
         k = (k << 15) | (k >> 17);
         k = k.wrapping_mul(0x1b873593);
+
         h ^= k;
     }
 
-    h ^= len as u64;
+    h ^= len as u32;
     h ^= h >> 16;
     h = h.wrapping_mul(0x85ebca6b);
     h ^= h >> 13;

@@ -173,10 +173,14 @@ where
                 buf[4..8].reverse();
 
                 // Set ports based on your logic
-                buf[8..10].copy_from_slice(&sport.to_be_bytes());
-                buf[8..10].reverse();
-                buf[10..12].copy_from_slice(&100u16.to_be_bytes());
-                buf[10..12].reverse();
+                let port_combined = (sport as u32) | ((100 as u32) << 16);
+                let port_bytes = port_combined.to_be_bytes();
+                buf[8..12].copy_from_slice(&port_bytes);
+                buf[8..12].reverse();
+                // buf[8..10].copy_from_slice(&sport.to_be_bytes());
+                // buf[8..10].reverse();
+                // buf[10..12].copy_from_slice(&100u16.to_be_bytes());
+                // buf[10..12].reverse();
 
                 let path = self.edge_indices_between_ns3(src, dst, &buf);
                 
@@ -892,7 +896,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
                 let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
-                let tmp=next_hop_choices.len()-1-(hash % next_hop_choices.len() as u64) as usize;
+                let tmp=(hash % next_hop_choices.len() as u32) as usize;
 
                 // Print input parameters
                 println!("next_hop_choices: {:?}\nKey: {:?}\nLength of key: {}\nSeed value: {}\nIndex: {}", next_hop_choices,buf,buf.len(),cur,tmp);
