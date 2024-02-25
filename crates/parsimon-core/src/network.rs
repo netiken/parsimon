@@ -131,7 +131,7 @@ where
     pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
         let mut topology = Topology::new_traced(&self.topology);
         let node_num = topology.graph.node_count();
-        // println!("node_num: {:?}", node_num);
+        println!("node_num: {:?}", node_num);
         let mut server_address = vec![Ipv4Addr::UNSPECIFIED; node_num as usize];
         for node in topology.graph.node_indices() {
             let node = &topology.graph[node];
@@ -887,10 +887,13 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
                 None => break,
             };
     
-            let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
+            let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
+                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur.into());
+                (hash % next_hop_choices.len() as u64) as usize
+            } else {
+                0 // For host nodes, always choose the first next hop
+            };
     
-            // Choose next hop based on hash
-            let idx = (hash % next_hop_choices.len() as u64) as usize;
             let next_hop = next_hop_choices[idx];
     
             // These indices are all guaranteed to exist because we have a valid topology
