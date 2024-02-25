@@ -35,6 +35,10 @@ impl Node {
             kind: NodeKind::Switch,
         }
     }
+
+    pub fn get_id(&self) -> usize {
+        self.id.0
+    }
 }
 
 /// A node is either a host or a switch.
@@ -286,6 +290,11 @@ pub struct Flow {
     pub size: Bytes,
     /// The flow's start time.
     pub start: Nanosecs,
+}
+impl Flow {
+    pub fn get_ids(&self) -> Vec<usize> {
+        vec![self.id.0, self.src.0, self.dst.0]
+    }
 }
 
 /// An `FctRecord` records the flow completion time of a particular flow.
