@@ -131,7 +131,7 @@ where
     pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
         let mut topology = Topology::new_traced(&self.topology);
         let node_num = topology.graph.node_count();
-        println!("node_num: {:?}", node_num);
+        // println!("node_num: {:?}", node_num);
         let mut server_address = vec![Ipv4Addr::UNSPECIFIED; node_num as usize];
         for node in topology.graph.node_indices() {
             let node = &topology.graph[node];
@@ -157,6 +157,7 @@ where
             for &f @ Flow { id, src, dst, .. } in flows {
                 // Get the ids (i.e., ID, SRC, DST) as usize of the flow
                 let ids = f.get_ids(); 
+
                 let sip= server_address[ids[1]];
                 let sip_bytes = sip.octets();
                
@@ -177,10 +178,6 @@ where
                 let port_bytes = port_combined.to_be_bytes();
                 buf[8..12].copy_from_slice(&port_bytes);
                 buf[8..12].reverse();
-                // buf[8..10].copy_from_slice(&sport.to_be_bytes());
-                // buf[8..10].reverse();
-                // buf[10..12].copy_from_slice(&100u16.to_be_bytes());
-                // buf[10..12].reverse();
 
                 let path = self.edge_indices_between_ns3(src, dst, &buf);
                 
@@ -888,7 +885,6 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
         while cur != dst {
             let next_hop_choices = match self.routes().next_hops(cur, dst) {
                 Some(mut hops) => {
-                    // hops.sort(); // Sort the next_hop_choices
                     hops
                 },
                 None => break,
@@ -897,9 +893,8 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
                 let hash = utils::calculate_hash_ns3(buf, buf.len(), cur.as_usize() as u32);
                 let tmp=(hash % next_hop_choices.len() as u32) as usize;
-
                 // Print input parameters
-                println!("next_hop_choices: {:?}\nKey: {:?}\nLength of key: {}\nSeed value: {}\nIndex: {}", next_hop_choices,buf,buf.len(),cur,tmp);
+                // println!("next_hop_choices: {:?}\nKey: {:?}\nLength of key: {}\nSeed value: {}\nIndex: {}", next_hop_choices,buf,buf.len(),cur,tmp);
                 tmp
             } else {
                 0 // For host nodes, always choose the first next hop
