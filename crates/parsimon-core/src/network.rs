@@ -889,14 +889,22 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
                 },
                 None => break,
             };
-            // println!("next_hop_choices: {:?}", next_hop_choices);
+            
             let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
                 let hash = utils::calculate_hash_ns3(buf, buf.len(), cur);
-                next_hop_choices.len()-1-(hash % next_hop_choices.len() as u64) as usize
+                let tmp=next_hop_choices.len()-1-(hash % next_hop_choices.len() as u64) as usize;
+
+                // Print input parameters
+                println!("next_hop_choices: {:?}", next_hop_choices);
+                println!("Key: {:?}", buf);
+                println!("Length of key: {}", buf.len());
+                println!("Seed value: {}", cur);
+                println!("Hash value: {}", tmp);
+                tmp
             } else {
                 0 // For host nodes, always choose the first next hop
             };
-    
+            
             let next_hop = next_hop_choices[idx];
     
             // These indices are all guaranteed to exist because we have a valid topology
