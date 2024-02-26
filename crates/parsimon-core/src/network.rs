@@ -190,7 +190,7 @@ where
                 for eidx in path {
                     path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
                 } 
-                for pair in path_vec.clone() {
+                for pair in path_vec.iter().skip(1).cloned() {
                     assignments.push((0, pair, vec![pair], id));
                 }
                 assignments.push((1, (src, dst), path_vec, id));
