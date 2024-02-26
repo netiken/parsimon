@@ -73,7 +73,7 @@ where
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
     pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
-        let mut topology = Topology::new_traced(&self.topology);
+        let topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
             for &f @ Flow { id, src, dst, .. } in flows {
@@ -109,9 +109,9 @@ where
                 (eidx, chan)
             })
             .collect::<Vec<_>>();
-        for (eidx, chan) in assignments {
-            topology.graph[eidx] = chan;
-        }
+        // for (eidx, chan) in assignments {
+        //     topology.graph[eidx] = chan;
+        // }
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
         let clusters = topology
@@ -124,13 +124,13 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
-            path_to_flowid_map: None,
             channel_to_flowid_map: None,
+            path_to_flowid_map: None,
         }
     }
     /// Creates a `SimNetwork` for path.
     pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
-        let mut topology = Topology::new_traced(&self.topology);
+        let topology = Topology::new_traced(&self.topology);
         let node_num = topology.graph.node_count();
         // println!("node_num: {:?}", node_num);
         let mut server_address = vec![Ipv4Addr::UNSPECIFIED; node_num as usize];
@@ -232,8 +232,8 @@ where
             routes: self.routes,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
-            path_to_flowid_map: path_to_flowid_map,
             channel_to_flowid_map: channel_to_flowid_map,
+            path_to_flowid_map: path_to_flowid_map,
         }
     }
 
@@ -904,9 +904,7 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
         let mut cur = src;
         while cur != dst {
             let next_hop_choices = match self.routes().next_hops(cur, dst) {
-                Some(mut hops) => {
-                    hops
-                },
+                Some(hops) => hops,
                 None => break,
             };
             
