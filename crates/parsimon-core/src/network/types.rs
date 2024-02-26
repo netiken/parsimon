@@ -276,7 +276,11 @@ impl<'a, C: Channel> Path<'a, C> {
 }
 
 identifier!(FlowId, usize);
-
+impl FlowId {
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
 /// A flow is a logically grouped sequence of bytes from a source to a destination.
 #[derive(Debug, Default, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
