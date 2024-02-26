@@ -73,7 +73,7 @@ where
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
     pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
-        let topology = Topology::new_traced(&self.topology);
+        let mut topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
             for &f @ Flow { id, src, dst, .. } in flows {
@@ -109,9 +109,9 @@ where
                 (eidx, chan)
             })
             .collect::<Vec<_>>();
-        // for (eidx, chan) in assignments {
-        //     topology.graph[eidx] = chan;
-        // }
+        for (eidx, chan) in assignments {
+            topology.graph[eidx] = chan;
+        }
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
         let clusters = topology
