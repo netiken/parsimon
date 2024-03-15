@@ -2,4 +2,4 @@
 [submodule "backends/High-Precision-Congestion-Control"]
 	path = backends/High-Precision-Congestion-Control
 	url = https://github.com/kwzhao/High-Precision-Congestion-Control.git
-	branch = lichenni
+	branch = m3
