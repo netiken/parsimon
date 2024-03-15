@@ -19,6 +19,13 @@ pub struct MinimLink {
     /// DCTCP additive increase.
     #[builder(setter(into))]
     pub dctcp_ai: BitsPerSec,
+    /// DCTCP masking threshold
+    #[builder(default = "default_dctcp_k")]
+    pub dctcp_k: f64,
+}
+
+fn default_dctcp_k() -> f64 {
+    30.0
 }
 
 impl LinkSim for MinimLink {
@@ -109,7 +116,8 @@ impl MinimLink {
             spec.bottleneck
                 .total_bandwidth
                 .scale_by(1e9_f64.recip())
-                .scale_by(3_f64)
+                // .scale_by(3_f64)
+                .scale_by(self.dctcp_k/10.0)
                 .into_u64(),
         );
         let bandwidth = if src_ids.contains(&spec.bottleneck.from) {
