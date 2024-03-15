@@ -20,12 +20,8 @@ pub struct MinimLink {
     #[builder(setter(into))]
     pub dctcp_ai: BitsPerSec,
     /// DCTCP masking threshold
-    #[builder(default = "default_dctcp_k")]
+    #[builder(default = 30.0)]
     pub dctcp_k: f64,
-}
-
-fn default_dctcp_k() -> f64 {
-    30.0
 }
 
 impl LinkSim for MinimLink {
