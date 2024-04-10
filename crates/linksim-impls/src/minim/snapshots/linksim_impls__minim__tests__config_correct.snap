@@ -12,11 +12,13 @@ expression: snapshot
   flows:
     - id: 0
       source: 0
+      qindex: 0
       size: 1000
       start: 0
       delay2dst: 4000
     - id: 1
       source: 0
+      qindex: 0
       size: 1000
       start: 960
       delay2dst: 4000
@@ -37,11 +39,13 @@ expression: snapshot
   flows:
     - id: 0
       source: 0
+      qindex: 0
       size: 1000
       start: 0
       delay2dst: 4000
     - id: 1
       source: 0
+      qindex: 0
       size: 1000
       start: 960
       delay2dst: 4000
@@ -62,11 +66,13 @@ expression: snapshot
   flows:
     - id: 0
       source: 0
+      qindex: 0
       size: 1000
       start: 0
       delay2dst: 4000
     - id: 1
       source: 0
+      qindex: 0
       size: 1000
       start: 960
       delay2dst: 4000
@@ -87,11 +93,13 @@ expression: snapshot
   flows:
     - id: 0
       source: 0
+      qindex: 0
       size: 1000
       start: 0
       delay2dst: 4000
     - id: 1
       source: 0
+      qindex: 0
       size: 1000
       start: 960
       delay2dst: 4000
@@ -102,4 +110,3 @@ expression: snapshot
   sz_pktmax: 1000
   sz_pkthdr: 48
   timeout: ~
-

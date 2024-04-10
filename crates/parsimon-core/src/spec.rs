@@ -4,11 +4,9 @@
 
 use std::collections::HashSet;
 
-use crate::{
-    network::{
-        types::{Link, Node, NodeId},
-        Flow, FlowId, Network, NodeKind, TopologyError,
-    },
+use crate::network::{
+    types::{Link, Node, NodeId},
+    Flow, FlowId, Network, NodeKind, TopologyError,
 };
 
 /// A simulation specification.
@@ -98,7 +96,6 @@ pub enum SpecError {
 
 #[cfg(test)]
 mod tests {
-    use crate::network::FlowId;
     use crate::testing;
     use crate::units::{Bytes, Nanosecs};
 
