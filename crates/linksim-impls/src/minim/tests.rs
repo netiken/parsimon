@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use minim::{
-    queue::FifoQ,
     units::{BitsPerSec, Bytes, Nanosecs},
     Config, FlowDesc, SourceDesc,
 };
@@ -31,7 +30,7 @@ struct MinimCheck {
 }
 
 impl MinimCheck {
-    fn from_config(cfg: &Config<FifoQ>) -> Self {
+    fn from_config(cfg: &Config) -> Self {
         Self {
             bandwidth: cfg.bandwidth,
             sources: cfg.sources.clone(),

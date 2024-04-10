@@ -28,7 +28,7 @@ impl LinkSim for MinimLink {
 
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult {
         let cfg = self.build_config(spec)?;
-        let records = minim::run(cfg);
+        let records = minim::run(cfg).map_err(|e| anyhow::anyhow!(e))?;
         let records = records
             .into_iter()
             .map(|r| FctRecord {
@@ -45,10 +45,7 @@ impl LinkSim for MinimLink {
 }
 
 impl MinimLink {
-    fn build_config(
-        &self,
-        spec: LinkSimSpec,
-    ) -> Result<minim::Config<minim::queue::FifoQ>, LinkSimError> {
+    fn build_config(&self, spec: LinkSimSpec) -> Result<minim::Config, LinkSimError> {
         let src_ids = spec
             .nodes
             .iter()
@@ -98,6 +95,7 @@ impl MinimLink {
                 minim::FlowDesc {
                     id: minim::FlowId::new(f.id.inner()),
                     source: minim::SourceId::new(f.src.inner()),
+                    qindex: minim::QIndex::ZERO,
                     size: minim::units::Bytes::new(f.size.into_u64()),
                     start: minim::units::Nanosecs::new(f.start.into_u64()),
                     delay2dst: minim::units::Nanosecs::new(delay2dst.into_u64()),
@@ -119,7 +117,7 @@ impl MinimLink {
         };
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))
-            .queue(minim::queue::FifoQ::new())
+            .quanta(vec![minim::units::Bytes::new(1024)])
             .sources(srcs)
             .flows(flows)
             .window(minim::units::Bytes::new(self.window.into_u64()))

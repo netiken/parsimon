@@ -235,9 +235,8 @@ mod tests {
     use super::*;
 
     use parsimon_core::{
-        network::{Flow, FlowId, NodeId},
+        network::{FlowId, NodeId},
         testing,
-        units::{Bytes, Nanosecs},
     };
 
     #[test]
