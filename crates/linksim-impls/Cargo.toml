@@ -7,7 +7,7 @@ version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-minim = { git = "https://github.com/netiken/minim.git", branch = "polyphony" }
+minim = { git = "https://github.com/netiken/minim.git", branch = "main" }
 ns3-frontend = { path = "../ns3-frontend" }
 parsimon-core = { path = "../parsimon-core" }
 petgraph = { workspace = true }

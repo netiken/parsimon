@@ -1176,7 +1176,7 @@ dependencies = [
 [[package]]
 name = "minim"
 version = "0.1.0"
-source = "git+https://github.com/netiken/minim.git?branch=polyphony#008bc545d1ace2b8389128db5f6c19ac386b85f9"
+source = "git+https://github.com/netiken/minim.git?branch=main#cd947a1413f56a05b8de7aaa325bfcd783854be5"
 dependencies = [
  "delegate",
  "derivative",
