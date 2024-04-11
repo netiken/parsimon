@@ -97,7 +97,6 @@ pub enum SpecError {
 #[cfg(test)]
 mod tests {
     use crate::testing;
-    use crate::units::{Bytes, Nanosecs};
 
     use super::*;
 
@@ -114,8 +113,7 @@ mod tests {
             id: FlowId::new(1),
             src: NodeId::new(100),
             dst: NodeId::new(2),
-            size: Bytes::ZERO,
-            start: Nanosecs::ZERO,
+            ..Default::default()
         };
         spec.flows.push(flow);
         assert!(matches!(
@@ -131,8 +129,7 @@ mod tests {
             id: FlowId::new(1),
             src: NodeId::new(0),
             dst: NodeId::new(100),
-            size: Bytes::ZERO,
-            start: Nanosecs::ZERO,
+            ..Default::default()
         };
         spec.flows.push(flow);
         assert!(matches!(
@@ -156,8 +153,7 @@ mod tests {
             id: FlowId::new(0),
             src: NodeId::new(0),
             dst: NodeId::new(2),
-            size: Bytes::ZERO,
-            start: Nanosecs::ZERO,
+            ..Default::default()
         };
         vec![flow]
     }

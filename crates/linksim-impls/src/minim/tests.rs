@@ -6,7 +6,7 @@ use minim::{
 };
 use parsimon_core::{
     linksim::LinkSimSpec,
-    network::{Flow, FlowId, Network, NodeId},
+    network::{Flow, FlowId, Network, NodeId, QIndex},
     testing,
 };
 use rand::prelude::*;
@@ -65,6 +65,7 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
         .window(parsimon_core::units::Bytes::new(18_000))
         .dctcp_gain(0.0625)
         .dctcp_ai(parsimon_core::units::Mbps::new(615))
+        .quanta([parsimon_core::units::Bytes::new(1024); 2])
         .build();
     let snapshot = network
         .edge_indices()
@@ -124,6 +125,7 @@ fn gen_flows(
             dst: NodeId::new(node_nums[1]),
             size: parsimon_core::units::Bytes::new(flow_exp.sample(&mut rng).round() as u64),
             start: parsimon_core::units::Nanosecs::new(new_start),
+            ..Default::default()
         });
         prev_start = new_start;
     }
@@ -138,6 +140,7 @@ fn config_correct() -> anyhow::Result<()> {
             src: NodeId::new(0),
             dst: NodeId::new(2),
             size: parsimon_core::units::Bytes::new(1000),
+            qindex: QIndex::ZERO,
             start: parsimon_core::units::Nanosecs::ZERO,
         },
         Flow {
@@ -145,6 +148,7 @@ fn config_correct() -> anyhow::Result<()> {
             src: NodeId::new(0),
             dst: NodeId::new(2),
             size: parsimon_core::units::Bytes::new(1000),
+            qindex: QIndex::ONE,
             start: parsimon_core::units::Nanosecs::new(960),
         },
     ])?;

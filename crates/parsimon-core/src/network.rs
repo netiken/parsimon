@@ -817,8 +817,7 @@ mod tests {
                 id: FlowId::new(i),
                 src: NodeId::new(0),
                 dst: NodeId::new(3),
-                size: Bytes::ZERO,
-                start: Nanosecs::ZERO,
+                ..Default::default()
             })
             .collect::<Vec<_>>();
         let network = network.into_simulations(flows);
@@ -864,6 +863,7 @@ mod tests {
                 dst: NodeId::new(1),
                 size: Bytes::new(1234),
                 start: Nanosecs::new(1_000_000_000),
+                ..Default::default()
             },
             Flow {
                 id: FlowId::new(1),
@@ -871,6 +871,7 @@ mod tests {
                 dst: NodeId::new(2),
                 size: Bytes::new(5678),
                 start: Nanosecs::new(2_000_000_000),
+                ..Default::default()
             },
         ];
 

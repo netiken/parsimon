@@ -1,9 +1,11 @@
 //! An interface to the Minim link-level simulator.
 
+use std::cmp;
+
 use parsimon_core::{
     constants::{SZ_PKTHDR, SZ_PKTMAX},
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
-    network::{FctRecord, FlowId},
+    network::{FctRecord, FlowId, QIndex},
     units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -19,6 +21,9 @@ pub struct MinimLink {
     /// DCTCP additive increase.
     #[builder(setter(into))]
     pub dctcp_ai: BitsPerSec,
+    /// Switch weights.
+    #[builder(setter(into), default = vec![Bytes::new(1024)])]
+    pub quanta: Vec<Bytes>,
 }
 
 impl LinkSim for MinimLink {
@@ -77,6 +82,7 @@ impl MinimLink {
             .collect::<Vec<_>>();
 
         let mut src2dst2delay = FxHashMap::default();
+        let mut max_qindex = QIndex::ZERO;
         let flows = spec
             .flows
             .into_iter()
@@ -92,16 +98,24 @@ impl MinimLink {
                             .map(|l| l.delay)
                             .sum::<Nanosecs>()
                     });
+                max_qindex = cmp::max(max_qindex, f.qindex);
                 minim::FlowDesc {
                     id: minim::FlowId::new(f.id.inner()),
                     source: minim::SourceId::new(f.src.inner()),
-                    qindex: minim::QIndex::ZERO,
+                    qindex: minim::QIndex::new(f.qindex.inner()),
                     size: minim::units::Bytes::new(f.size.into_u64()),
                     start: minim::units::Nanosecs::new(f.start.into_u64()),
                     delay2dst: minim::units::Nanosecs::new(delay2dst.into_u64()),
                 }
             })
             .collect::<Vec<_>>();
+
+        if max_qindex.inner() >= self.quanta.len() {
+            return Err(LinkSimError::Other(anyhow::anyhow!(
+                "Invalid quanta for index {:?}",
+                max_qindex
+            )));
+        }
 
         let marking_threshold = Kilobytes::new(
             spec.bottleneck
@@ -115,9 +129,14 @@ impl MinimLink {
         } else {
             spec.bottleneck.available_bandwidth
         };
+        let quanta = self
+            .quanta
+            .iter()
+            .map(|q| minim::units::Bytes::new(q.into_u64()))
+            .collect();
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))
-            .quanta(vec![minim::units::Bytes::new(1024)])
+            .quanta(quanta)
             .sources(srcs)
             .flows(flows)
             .window(minim::units::Bytes::new(self.window.into_u64()))
