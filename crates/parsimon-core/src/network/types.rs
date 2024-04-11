@@ -203,7 +203,7 @@ impl FlowChannel {
         self.flow_end = std::cmp::max(self.flow_end, flow.start);
         self.flows.push(flow.id);
     }
-    
+
     pub(crate) fn duration(&self) -> Nanosecs {
         if self.flows.is_empty() {
             Nanosecs::ZERO
@@ -273,6 +273,41 @@ impl<'a, C: Channel> Path<'a, C> {
 
 identifier!(FlowId, usize);
 
+/// A queue index.
+///
+/// Each queue is associated with a scheduling weight.
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+pub struct QIndex(usize);
+
+impl QIndex {
+    /// Queue index zero.
+    pub const ZERO: QIndex = QIndex::new(0);
+    /// Queue index one.
+    pub const ONE: QIndex = QIndex::new(1);
+
+    /// Create a new queue index.
+    pub const fn new(val: usize) -> Self {
+        Self(val)
+    }
+
+    /// Get the inner value of the queue index.
+    pub const fn inner(&self) -> usize {
+        self.0
+    }
+}
+
 /// A flow is a logically grouped sequence of bytes from a source to a destination.
 #[derive(Debug, Default, Clone, Copy, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Flow {
@@ -284,6 +319,8 @@ pub struct Flow {
     pub dst: NodeId,
     /// The flow size.
     pub size: Bytes,
+    /// The queue index.
+    pub qindex: QIndex,
     /// The flow's start time.
     pub start: Nanosecs,
 }

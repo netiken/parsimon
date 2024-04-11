@@ -19,6 +19,7 @@ fn ns3_runs() -> anyhow::Result<()> {
             dst: NodeId::new(1),
             size: Bytes::new(1234),
             start: Nanosecs::new(1_000_000_000),
+            ..Default::default()
         },
         Flow {
             id: FlowId::new(1),
@@ -26,6 +27,7 @@ fn ns3_runs() -> anyhow::Result<()> {
             dst: NodeId::new(2),
             size: Bytes::new(5678),
             start: Nanosecs::new(2_000_000_000),
+            ..Default::default()
         },
     ];
     let sim = Ns3Simulation::builder()

@@ -139,6 +139,7 @@ fn gen_flows(
             dst: NodeId::new(node_nums[1]),
             size: Bytes::new(flow_exp.sample(&mut rng).round() as u64),
             start: Nanosecs::new(new_start),
+            ..Default::default()
         });
         prev_start = new_start;
     }
