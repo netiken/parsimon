@@ -45,6 +45,14 @@ macro_rules! unit {
                 self.0 as usize
             }
 
+            pub const fn saturating_add(self, rhs: Self) -> Self {
+                Self::new(self.0.saturating_add(rhs.0))
+            }
+
+            pub const fn saturating_sub(self, rhs: Self) -> Self {
+                Self::new(self.0.saturating_sub(rhs.0))
+            }
+
             pub fn scale_by(self, val: f64) -> Self {
                 let inner = self.0 as f64 * val;
                 Self(inner.round() as u64)
@@ -78,7 +86,6 @@ impl std::fmt::Display for Mbps {
 unit!(BitsPerSec);
 
 impl BitsPerSec {
-
     #[allow(non_snake_case)]
     pub fn length(&self, size: Bytes) -> Nanosecs {
         assert!(*self != BitsPerSec::ZERO);
