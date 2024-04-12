@@ -57,6 +57,10 @@ macro_rules! unit {
                 let inner = self.0 as f64 * val;
                 Self(inner.round() as u64)
             }
+
+            pub fn frac(a: Self, b: Self) -> f64 {
+                a.into_f64() / b.into_f64()
+            }
         }
 
         impl From<$name> for f64 {
