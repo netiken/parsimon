@@ -4,7 +4,7 @@
 use std::cmp::Ordering;
 
 use petgraph::graph::EdgeIndex;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::constants::{SZ_ACK, SZ_PKTMAX};
 use crate::edist::EDistBuckets;
@@ -227,7 +227,7 @@ pub(crate) struct EDistChannel {
     pub(crate) dst: NodeId,
     pub(crate) bandwidth: BitsPerSec,
     pub(crate) delay: Nanosecs,
-    pub(crate) dists: EDistBuckets,
+    pub(crate) dists: FxHashMap<QIndex, EDistBuckets>,
 }
 
 impl EDistChannel {
@@ -237,8 +237,12 @@ impl EDistChannel {
             dst: chan.dst,
             bandwidth: chan.bandwidth,
             delay: chan.delay,
-            dists: EDistBuckets::new_empty(),
+            dists: FxHashMap::default(),
         }
+    }
+
+    pub(crate) fn for_qindex(&self, qindex: QIndex) -> Option<&EDistBuckets> {
+        self.dists.get(&qindex)
     }
 }
 
@@ -334,6 +338,8 @@ pub struct FctRecord {
     pub size: Bytes,
     /// The flow's start time.
     pub start: Nanosecs,
+    /// The flow's queue index.
+    pub qindex: QIndex,
 
     /// The measured flow completion time.
     pub fct: Nanosecs,

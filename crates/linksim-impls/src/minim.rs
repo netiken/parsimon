@@ -40,6 +40,7 @@ impl LinkSim for MinimLink {
                 id: FlowId::new(r.id.into_usize()),
                 size: Bytes::new(r.size.into_u64()),
                 start: Nanosecs::new(r.start.into_u64()),
+                qindex: QIndex::new(r.qindex.inner()),
                 fct: Nanosecs::new(r.fct.into_u64()),
                 ideal: Nanosecs::new(r.ideal.into_u64()),
             })

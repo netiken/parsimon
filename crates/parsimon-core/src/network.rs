@@ -24,7 +24,7 @@ use crate::{
     cluster::{Cluster, ClusteringAlgo},
     constants::SZ_PKTMAX,
     distribute::{self, WorkerParams},
-    edist::EDistError,
+    edist::{EDistBuckets, EDistError},
     linksim::{
         LinkSim, LinkSimDesc, LinkSimError, LinkSimLink, LinkSimNode, LinkSimNodeKind, LinkSimSpec,
     },
@@ -230,13 +230,27 @@ where
                     Some(data) => &data[..],
                     None => &[],
                 };
-                if !data.is_empty() {
-                    topology.graph[member].dists.fill(
-                        data,
-                        |rec| rec.size,
-                        |rec| rec.pktnorm_delay(),
-                        opts.bucket_opts,
-                    )?;
+                let qix2data = data.iter().fold(
+                    FxHashMap::default(),
+                    |mut acc: FxHashMap<_, Vec<_>>, rec| {
+                        acc.entry(rec.qindex).or_default().push(*rec);
+                        acc
+                    },
+                );
+                for (qix, data) in qix2data {
+                    if data.is_empty() {
+                        continue;
+                    }
+                    topology.graph[member]
+                        .dists
+                        .entry(qix)
+                        .or_insert_with(EDistBuckets::new_empty)
+                        .fill(
+                            &data,
+                            |rec| rec.size,
+                            |rec| rec.pktnorm_delay(),
+                            opts.bucket_opts,
+                        )?;
                 }
             }
         }
@@ -624,6 +638,7 @@ where
     /// `dst`.
     pub fn predict<RNG>(
         &self,
+        qindex: QIndex,
         size: Bytes,
         (src, dst): (NodeId, NodeId),
         mut rng: RNG,
@@ -640,7 +655,11 @@ where
         }
         channels
             .iter()
-            .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
+            .map(|&chan| {
+                chan.for_qindex(qindex)
+                    .and_then(|dist| dist.for_size(size))
+                    .map(|dist| dist.sample(&mut rng))
+            })
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
                 let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
@@ -676,6 +695,7 @@ where
     /// Slowdown is defined as the measured FCT divided by the ideal FCT.
     pub fn slowdown<RNG>(
         &self,
+        qindex: QIndex,
         size: Bytes,
         (src, dst): (NodeId, NodeId),
         mut rng: RNG,
@@ -693,7 +713,11 @@ where
         let ideal_fct = utils::ideal_fct(size, &channels);
         let delay = channels
             .iter()
-            .map(|&chan| chan.dists.for_size(size).map(|dist| dist.sample(&mut rng)))
+            .map(|&chan| {
+                chan.for_qindex(qindex)
+                    .and_then(|dist| dist.for_size(size))
+                    .map(|dist| dist.sample(&mut rng))
+            })
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
                 let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();

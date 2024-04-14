@@ -10,6 +10,7 @@ use std::process::Command;
 use std::{fmt::Write, io};
 
 use derivative::Derivative;
+use parsimon_core::network::QIndex;
 use parsimon_core::{
     network::Flow,
     network::{
@@ -186,6 +187,7 @@ fn parse_ns3_record(s: &str) -> Result<FctRecord, ParseNs3Error> {
         start: fields[6].parse()?,
         fct: fields[7].parse()?,
         ideal: fields[8].parse()?,
+        qindex: QIndex::new(3),
     })
 }
 

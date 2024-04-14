@@ -69,7 +69,12 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .map(|flow| {
             delay_network
-                .predict(flow.size, (flow.src, flow.dst), &mut rng)
+                .predict(
+                    Default::default(),
+                    flow.size,
+                    (flow.src, flow.dst),
+                    &mut rng,
+                )
                 .ok_or_else(|| anyhow::anyhow!("failed to get prediction"))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
