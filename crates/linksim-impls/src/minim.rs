@@ -21,6 +21,9 @@ pub struct MinimLink {
     /// DCTCP additive increase.
     #[builder(setter(into))]
     pub dctcp_ai: BitsPerSec,
+    /// Constant for computing DCTCP marking threshold.
+    #[builder(default = 30, setter(into))]
+    pub dctcp_marking_c: u64,
     /// Switch weights.
     #[builder(setter(into), default = vec![Bytes::new(1024)])]
     pub quanta: Vec<Bytes>,
@@ -121,8 +124,8 @@ impl MinimLink {
         let marking_threshold = Kilobytes::new(
             spec.bottleneck
                 .total_bandwidth
-                .scale_by(1e9_f64.recip())
-                .scale_by(3_f64)
+                .scale_by(10e9_f64.recip())
+                .scale_by(self.dctcp_marking_c as f64)
                 .into_u64(),
         );
         let bandwidth = if src_ids.contains(&spec.bottleneck.from) {
