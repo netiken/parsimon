@@ -19,6 +19,7 @@ use rand_distr::Exp;
 const WINDOW: Bytes = Bytes::new(18_000);
 const DCTCP_GAIN: f64 = 0.0625;
 const DCTCP_AI: Mbps = Mbps::new(615);
+const SZ_PKTMAX: Bytes = Bytes::new(1000);
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -59,6 +60,7 @@ fn main() -> anyhow::Result<()> {
         .window(WINDOW)
         .dctcp_gain(DCTCP_GAIN)
         .dctcp_ai(DCTCP_AI)
+        .sz_pktmax(SZ_PKTMAX)
         .build();
     let opts = SimOpts::builder().link_sim(minim).build();
 

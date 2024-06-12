@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use petgraph::graph::EdgeIndex;
 
-use crate::{network::SimNetwork, routing::RoutingAlgo};
+use crate::{linksim::LinkSim, network::SimNetwork, routing::RoutingAlgo};
 
 /// A cluster of edges with a representative member.
 #[derive(Debug, Clone, derive_new::new)]
@@ -35,14 +35,16 @@ impl Cluster {
 pub trait ClusteringAlgo {
     /// Given a [`SimNetwork`], run a clustering algorithm and return a vector of
     /// [clusters](Cluster).
-    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    fn cluster<L, R>(&self, network: &SimNetwork<L, R>) -> Vec<Cluster>
     where
+        L: LinkSim + Clone + Sync,
         R: RoutingAlgo + Sync;
 }
 
 impl<C: ClusteringAlgo> ClusteringAlgo for &C {
-    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    fn cluster<L, R>(&self, network: &SimNetwork<L, R>) -> Vec<Cluster>
     where
+        L: LinkSim + Clone + Sync,
         R: RoutingAlgo + Sync,
     {
         (*self).cluster(network)
@@ -54,8 +56,9 @@ impl<C: ClusteringAlgo> ClusteringAlgo for &C {
 pub struct DefaultClustering;
 
 impl ClusteringAlgo for DefaultClustering {
-    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    fn cluster<L, R>(&self, network: &SimNetwork<L, R>) -> Vec<Cluster>
     where
+        L: LinkSim + Clone + Sync,
         R: RoutingAlgo + Sync,
     {
         network.clusters().to_vec()

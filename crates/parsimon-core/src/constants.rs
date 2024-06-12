@@ -2,9 +2,6 @@
 
 use crate::units::Bytes;
 
-/// The maximum packet size.
-pub const SZ_PKTMAX: Bytes = Bytes::new(1000);
-
 /// The packet header size.
 pub const SZ_PKTHDR: Bytes = Bytes::new(48);
 

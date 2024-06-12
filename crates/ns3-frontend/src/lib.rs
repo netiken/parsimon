@@ -40,6 +40,9 @@ pub struct Ns3Simulation {
     /// The congestion control protocol.
     #[builder(default)]
     pub cc_kind: CcKind,
+    /// The maximum packet size.
+    #[builder(default = Bytes::new(1000))]
+    pub sz_pktmax: Bytes,
     /// The flows to simulate.
     /// PRECONDITION: `flows` must be sorted by start time
     pub flows: Vec<Flow>,
@@ -91,9 +94,10 @@ impl Ns3Simulation {
         let window = self.window.into_u64();
         let base_rtt = self.base_rtt.into_u64();
         let cc = self.cc_kind.as_str();
+        let sz_pktmax = self.sz_pktmax.into_u64();
         let python_command = format!(
             "python2 run.py --root {data_dir} --fwin {window} --base_rtt {base_rtt} \
-            --topo topology --trace flows --bw 10 --cc {cc} \
+            --topo topology --trace flows --bw 10 --cc {cc} --sz_pktmax {sz_pktmax} \
             > {data_dir}/output.txt 2>&1"
         );
         // Execute the command in a child process.

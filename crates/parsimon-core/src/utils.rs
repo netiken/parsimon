@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 
 use rayon::prelude::*;
 
+use crate::constants::SZ_PKTHDR;
 use crate::network::{Channel, Flow};
 use crate::units::{Bytes, Gbps, Nanosecs};
 
@@ -71,19 +72,14 @@ where
     r.into_iter().flat_map(|v| v.into_iter())
 }
 
-// XXX: These are set to match the ns3 implementation's default behavior.
-// TODO: Allow configuring these in ns3.
-const SZ_PKTMAX: Bytes = Bytes::new(1_000);
-const SZ_PKTHDR: Bytes = Bytes::new(48);
-
-pub(crate) fn ideal_fct<T>(size: Bytes, hops: &[T]) -> Nanosecs
+pub(crate) fn ideal_fct<T>(size: Bytes, hops: &[T], sz_pktmax: Bytes) -> Nanosecs
 where
     T: Channel,
 {
     assert!(!hops.is_empty());
     let bandwidths = hops.iter().map(|c| c.bandwidth()).collect::<Vec<_>>();
     let min_bw = bandwidths.iter().min().unwrap();
-    let sz_head_ = cmp::min(SZ_PKTMAX, size);
+    let sz_head_ = cmp::min(sz_pktmax, size);
     let sz_head = (sz_head_ != Bytes::ZERO)
         .then(|| sz_head_ + SZ_PKTHDR)
         .unwrap_or(Bytes::ZERO);
@@ -93,9 +89,9 @@ where
         .map(|bw| bw.length(sz_head))
         .sum::<Nanosecs>();
     let rest_delay = {
-        let nr_full_pkts = sz_rest_.into_usize() / SZ_PKTMAX.into_usize();
-        let sz_full_pkt = SZ_PKTMAX + SZ_PKTHDR;
-        let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % SZ_PKTMAX.into_u64());
+        let nr_full_pkts = sz_rest_.into_usize() / sz_pktmax.into_usize();
+        let sz_full_pkt = sz_pktmax + SZ_PKTHDR;
+        let sz_partial_pkt_ = Bytes::new(sz_rest_.into_u64() % sz_pktmax.into_u64());
         let sz_partial_pkt = (sz_partial_pkt_ != Bytes::ZERO)
             .then(|| sz_partial_pkt_ + SZ_PKTHDR)
             .unwrap_or(Bytes::ZERO);

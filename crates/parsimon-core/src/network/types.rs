@@ -1,4 +1,4 @@
-//! This module defines core types used to construct a network, such as [nodes](Node),
+//! This module defines core types used to conztruct a network, such as [nodes](Node),
 //! [links][Link], and [channels](Channel).
 
 use std::cmp::Ordering;
@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use petgraph::graph::EdgeIndex;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::constants::{SZ_ACK, SZ_PKTMAX};
+use crate::constants::SZ_ACK;
 use crate::edist::EDistBuckets;
 use crate::units::{BitsPerSec, Bytes, Nanosecs};
 
@@ -192,9 +192,9 @@ impl FlowChannel {
         self.flows.iter().copied()
     }
 
-    pub(crate) fn push_flow(&mut self, flow: &Flow) {
+    pub(crate) fn push_flow(&mut self, flow: &Flow, sz_pktmax: Bytes) {
         self.nr_bytes += flow.size;
-        let nr_pkts = (flow.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+        let nr_pkts = (flow.size.into_f64() / sz_pktmax.into_f64()).ceil();
         let nr_ack_bytes = SZ_ACK.scale_by(nr_pkts);
         self.nr_ack_bytes += nr_ack_bytes;
         self.flow_srcs.insert(flow.src);
@@ -359,8 +359,8 @@ impl FctRecord {
 
     /// Returns the packet-normalized delay, which is the delay normalized by the number of packets
     /// in the flow.
-    pub fn pktnorm_delay(&self) -> f64 {
-        let nr_pkts = (self.size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+    pub fn pktnorm_delay(&self, sz_pktmax: Bytes) -> f64 {
+        let nr_pkts = (self.size.into_f64() / sz_pktmax.into_f64()).ceil();
         self.delay().into_f64() / nr_pkts
     }
 

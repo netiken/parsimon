@@ -22,7 +22,6 @@ pub use types::*;
 
 use crate::{
     cluster::{Cluster, ClusteringAlgo},
-    constants::SZ_PKTMAX,
     distribute::{self, WorkerParams},
     edist::{EDistBuckets, EDistError},
     linksim::{
@@ -71,7 +70,11 @@ where
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
     /// `network`, and there must be a path between them.
     /// POSTCONDITION: The flows populating each link will be sorted by start time.
-    pub fn into_simulations(self, flows: Vec<Flow>) -> SimNetwork<R> {
+    pub fn into_simulations<L: LinkSim>(
+        self,
+        flows: Vec<Flow>,
+        opts: SimOpts<L>,
+    ) -> SimNetwork<L, R> {
         let mut topology = Topology::new_traced(&self.topology);
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
@@ -102,7 +105,7 @@ where
                 // POSTCONDITION: The flows populating each link will be sorted by start time.
                 flows.sort_by_key(|f| f.start);
                 for f in flows {
-                    chan.push_flow(&f);
+                    chan.push_flow(&f, opts.sz_pktmax);
                 }
                 (eidx, chan)
             })
@@ -120,6 +123,7 @@ where
         SimNetwork {
             topology,
             routes: self.routes,
+            opts,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
         }
@@ -183,9 +187,10 @@ where
 /// flows traversing it. These links can be simulated to produce a [`DelayNetwork`]. Optionally,
 /// they can also be clustered to reduce the number of simulations.
 #[derive(Debug, Clone)]
-pub struct SimNetwork<R = BfsRoutes> {
+pub struct SimNetwork<L, R = BfsRoutes> {
     topology: Topology<FlowChannel>,
     routes: R,
+    opts: SimOpts<L>,
 
     // Channel clustering
     clusters: Vec<Cluster>,
@@ -193,8 +198,9 @@ pub struct SimNetwork<R = BfsRoutes> {
     flows: HashMap<FlowId, Flow>,
 }
 
-impl<R> SimNetwork<R>
+impl<L, R> SimNetwork<L, R>
 where
+    L: LinkSim + Sync + Clone,
     R: RoutingAlgo + Sync,
 {
     /// Clusters the links in the network with the given clustering algorithm.
@@ -208,16 +214,14 @@ where
 
     /// Converts the `SimNetwork` into a [`DelayNetwork`] by performing link simulations and
     /// processing the results into empirical distributions bucketed by flow size.
-    pub fn into_delays<S>(self, opts: SimOpts<S>) -> Result<DelayNetwork<R>, SimNetworkError>
-    where
-        S: LinkSim + Sync,
-    {
+    pub fn into_delays(self) -> Result<DelayNetwork<R>, SimNetworkError> {
         let mut topology = Topology::new_edist(&self.topology);
+        let opts = &self.opts;
 
         let eidx2data = if opts.is_local() {
-            self.simulate_clusters_locally(opts.link_sim)?
+            self.simulate_clusters_locally(opts.link_sim.clone())?
         } else {
-            self.simulate_clusters(opts.link_sim, &opts.workers)?
+            self.simulate_clusters(opts.link_sim.clone(), &opts.workers)?
         };
 
         // Every channel gets filled with delay distributions. All channels in the same cluster get
@@ -248,7 +252,7 @@ where
                         .fill(
                             &data,
                             |rec| rec.size,
-                            |rec| rec.pktnorm_delay(),
+                            |rec| rec.pktnorm_delay(opts.sz_pktmax),
                             opts.bucket_opts,
                         )?;
                 }
@@ -256,6 +260,7 @@ where
         }
         Ok(DelayNetwork {
             topology,
+            sz_pktmax: opts.sz_pktmax,
             routes: self.routes,
         })
     }
@@ -576,7 +581,7 @@ where
     }
 }
 
-impl<R> TraversableNetwork<FlowChannel, R> for SimNetwork<R>
+impl<L, R> TraversableNetwork<FlowChannel, R> for SimNetwork<L, R>
 where
     R: RoutingAlgo,
 {
@@ -627,6 +632,7 @@ pub enum SimNetworkError {
 #[allow(unused)]
 pub struct DelayNetwork<R = BfsRoutes> {
     topology: Topology<EDistChannel>,
+    sz_pktmax: Bytes,
     routes: R,
 }
 
@@ -662,7 +668,7 @@ where
             })
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / self.sz_pktmax.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })
@@ -686,7 +692,7 @@ where
         if channels.is_empty() {
             return None;
         }
-        Some(utils::ideal_fct(size, &channels))
+        Some(utils::ideal_fct(size, &channels, self.sz_pktmax))
     }
 
     /// Predict a point estimate of slowdown for a flow of a particular `size` going from `src` to
@@ -710,7 +716,7 @@ where
         if channels.is_empty() {
             return None;
         }
-        let ideal_fct = utils::ideal_fct(size, &channels);
+        let ideal_fct = utils::ideal_fct(size, &channels, self.sz_pktmax);
         let delay = channels
             .iter()
             .map(|&chan| {
@@ -720,7 +726,7 @@ where
             })
             .sum::<Option<f64>>()
             .map(|pktnorm_delay| {
-                let nr_pkts = (size.into_f64() / SZ_PKTMAX.into_f64()).ceil();
+                let nr_pkts = (size.into_f64() / self.sz_pktmax.into_f64()).ceil();
                 let delay = nr_pkts * pktnorm_delay;
                 Nanosecs::new(delay as u64)
             })?;
@@ -815,7 +821,7 @@ mod tests {
 
     use anyhow::Context;
 
-    use crate::testing;
+    use crate::testing::{self, NoOpLinkSim};
 
     use super::*;
 
@@ -844,7 +850,8 @@ mod tests {
                 ..Default::default()
             })
             .collect::<Vec<_>>();
-        let network = network.into_simulations(flows);
+        let opts = SimOpts::builder().link_sim(NoOpLinkSim).build();
+        let network = network.into_simulations(flows, opts);
 
         // The ECMP group contains edges (4, 6) and (4, 7)
         let e1 = find_edge(&network.topology, NodeId::new(4), NodeId::new(6)).unwrap();
@@ -867,7 +874,8 @@ mod tests {
     fn default_clustering_is_one_to_one() -> anyhow::Result<()> {
         let (nodes, links) = testing::eight_node_config();
         let network = Network::new(&nodes, &links).context("failed to create topology")?;
-        let network = network.into_simulations(Vec::new());
+        let opts = SimOpts::builder().link_sim(NoOpLinkSim).build();
+        let network = network.into_simulations(Vec::new(), opts);
         assert_eq!(network.nr_clusters(), network.nr_edges());
         assert!(network
             .clusters
@@ -900,7 +908,8 @@ mod tests {
         ];
 
         let network = Network::new(&nodes, &links)?;
-        let network = network.into_simulations(flows);
+        let opts = SimOpts::builder().link_sim(NoOpLinkSim).build();
+        let network = network.into_simulations(flows, opts);
         let check = network
             .edge_indices()
             .filter_map(|eidx| {

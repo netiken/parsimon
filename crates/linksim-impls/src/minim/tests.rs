@@ -7,7 +7,8 @@ use minim::{
 use parsimon_core::{
     linksim::LinkSimSpec,
     network::{Flow, FlowId, Network, NodeId, QIndex},
-    testing,
+    opts::SimOpts,
+    testing::{self, NoOpLinkSim},
 };
 use rand::prelude::*;
 use rand_distr::Exp;
@@ -58,7 +59,8 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
         .iter()
         .map(|f| (f.id, f.to_owned()))
         .collect::<FxHashMap<_, _>>();
-    let network = network.into_simulations(flows);
+    let opts = SimOpts::builder().link_sim(NoOpLinkSim).build();
+    let network = network.into_simulations(flows, opts);
 
     // Build a `MinimLink` instance and use it to generate `MinimCheck`s.
     let linksim = MinimLink::builder()
@@ -66,6 +68,7 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
         .dctcp_gain(0.0625)
         .dctcp_ai(parsimon_core::units::Mbps::new(615))
         .quanta([parsimon_core::units::Bytes::new(1024); 2])
+        .sz_pktmax(parsimon_core::units::Bytes::new(1000))
         .build();
     let snapshot = network
         .edge_indices()

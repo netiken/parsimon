@@ -1,7 +1,25 @@
 //! Utilities for writing tests.
 
+use serde::{Deserialize, Serialize};
+
+use crate::linksim::{LinkSim, LinkSimError, LinkSimSpec};
 use crate::network::types::{Link, Node, NodeId};
+use crate::network::FctRecord;
 use crate::units::{Gbps, Nanosecs};
+
+/// A no-op link simulator.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoOpLinkSim;
+
+impl LinkSim for NoOpLinkSim {
+    fn name(&self) -> String {
+        "noop".into()
+    }
+
+    fn simulate(&self, _spec: LinkSimSpec) -> Result<Vec<FctRecord>, LinkSimError> {
+        Ok(Vec::new())
+    }
+}
 
 /// Generate a configuration with two hosts connected by a switch.
 ///

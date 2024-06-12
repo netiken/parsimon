@@ -25,7 +25,6 @@ pub trait LinkSim: serde::Serialize + serde::de::DeserializeOwned {
     /// Given [`LinkSimSpec`], simulate it and return a collection of FCT records.
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult;
 }
-
 /// A full specification for a link-level simulation.
 #[derive(Debug)]
 pub struct LinkSimSpec {

@@ -10,14 +10,14 @@ use crate::spec::{Spec, SpecError};
 /// distributions, using a provided [link simulation options](SimOpts) and [clustering algorithm](ClusteringAlgo).
 pub fn run<S, C>(spec: Spec, opts: SimOpts<S>, clusterer: C) -> Result<DelayNetwork, Error>
 where
-    S: LinkSim + Sync,
+    S: LinkSim + Sync + Clone,
     C: ClusteringAlgo,
 {
     let spec = spec.validate()?;
     let flows = spec.collect_flows();
-    let mut sims = spec.network.into_simulations(flows);
+    let mut sims = spec.network.into_simulations(flows, opts);
     sims.cluster(clusterer);
-    let delays = sims.into_delays(opts)?;
+    let delays = sims.into_delays()?;
     Ok(delays)
 }
 

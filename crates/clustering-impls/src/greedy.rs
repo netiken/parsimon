@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use dashmap::DashMap;
 use parsimon_core::{
     cluster::{Cluster, ClusteringAlgo},
+    linksim::LinkSim,
     network::{types::FlowChannel, EdgeIndex, Flow, SimNetwork},
     routing::RoutingAlgo,
 };
@@ -26,8 +27,9 @@ where
     G: Fn(&X, &X) -> bool + Sync,
     X: Clone + Send + Sync,
 {
-    fn cluster<R>(&self, network: &SimNetwork<R>) -> Vec<Cluster>
+    fn cluster<L, R>(&self, network: &SimNetwork<L, R>) -> Vec<Cluster>
     where
+        L: LinkSim + Clone + Sync,
         R: RoutingAlgo + Sync,
     {
         let features = Features::new(network, &self.feature);
@@ -59,17 +61,18 @@ where
 }
 
 #[derive(derive_new::new)]
-struct Features<'a, F, X, R> {
-    network: &'a SimNetwork<R>,
+struct Features<'a, F, X, L, R> {
+    network: &'a SimNetwork<L, R>,
     feature: F,
     #[new(default)]
     cache: DashMap<EdgeIndex, X>,
 }
 
-impl<'a, F, X, R> Features<'a, F, X, R>
+impl<'a, F, X, L, R> Features<'a, F, X, L, R>
 where
     F: Fn(&FlowChannel, &[Flow]) -> X + Sync,
     X: Clone + Send + Sync,
+    L: LinkSim + Clone + Sync,
     R: RoutingAlgo + Sync,
 {
     fn get(&self, eidx: EdgeIndex) -> X {

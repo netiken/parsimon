@@ -28,6 +28,9 @@ pub struct Ns3Link {
     /// The congestion control algorithm.
     #[builder(default)]
     pub cc_kind: CcKind,
+    /// The maximum packet size.
+    #[builder(default = Bytes::new(1000))]
+    pub sz_pktmax: Bytes,
 }
 
 impl LinkSim for Ns3Link {
@@ -50,6 +53,7 @@ impl LinkSim for Ns3Link {
             .window(self.window)
             .base_rtt(self.base_rtt)
             .cc_kind(self.cc_kind)
+            .sz_pktmax(self.sz_pktmax)
             .flows(spec.flows)
             .build();
         let records = sim.run().map_err(|e| anyhow::anyhow!(e))?;

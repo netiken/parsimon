@@ -3,7 +3,7 @@
 use std::cmp;
 
 use parsimon_core::{
-    constants::{SZ_PKTHDR, SZ_PKTMAX},
+    constants::SZ_PKTHDR,
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
     network::{FctRecord, FlowId, QIndex},
     units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
@@ -11,7 +11,7 @@ use parsimon_core::{
 use rustc_hash::{FxHashMap, FxHashSet};
 
 /// A Minim link simulation.
-#[derive(Debug, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
     /// The sending window.
     #[builder(setter(into))]
@@ -24,6 +24,8 @@ pub struct MinimLink {
     /// Constant for computing DCTCP marking threshold.
     #[builder(default = 30, setter(into))]
     pub dctcp_marking_c: u64,
+    /// Maximum packet size
+    pub sz_pktmax: Bytes,
     /// Switch weights.
     #[builder(setter(into), default = vec![Bytes::new(1024)])]
     pub quanta: Vec<Bytes>,
@@ -147,7 +149,7 @@ impl MinimLink {
             .dctcp_marking_threshold(minim::units::Kilobytes::new(marking_threshold.into_u64()))
             .dctcp_gain(self.dctcp_gain)
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
-            .sz_pktmax(minim::units::Bytes::new(SZ_PKTMAX.into_u64()))
+            .sz_pktmax(minim::units::Bytes::new(self.sz_pktmax.into_u64()))
             .sz_pkthdr(minim::units::Bytes::new(SZ_PKTHDR.into_u64()))
             .build();
         Ok(cfg)
