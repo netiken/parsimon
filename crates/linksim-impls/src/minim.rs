@@ -6,7 +6,7 @@ use parsimon_core::{
     constants::SZ_PKTHDR,
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
     network::{FctRecord, FlowId, QIndex},
-    units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
+    units::{BitsPerSec, Bytes, Kilobytes, Mbps, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -14,21 +14,29 @@ use rustc_hash::{FxHashMap, FxHashSet};
 #[derive(Debug, Clone, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
     /// The sending window.
-    #[builder(setter(into))]
+    #[builder(default = Bytes::new(10_000), setter(into))]
     pub window: Bytes,
     /// DCTCP gain.
+    #[builder(default = 0.0625)]
     pub dctcp_gain: f64,
     /// DCTCP additive increase.
-    #[builder(setter(into))]
+    #[builder(default = Mbps::new(615).into(), setter(into))]
     pub dctcp_ai: BitsPerSec,
     /// Constant for computing DCTCP marking threshold.
     #[builder(default = 30, setter(into))]
     pub dctcp_marking_c: u64,
     /// Maximum packet size
+    #[builder(default = Bytes::new(1000), setter(into))]
     pub sz_pktmax: Bytes,
     /// Switch weights.
     #[builder(setter(into), default = vec![Bytes::new(1024)])]
     pub quanta: Vec<Bytes>,
+}
+
+impl Default for MinimLink {
+    fn default() -> Self {
+        Self::builder().build()
+    }
 }
 
 impl LinkSim for MinimLink {
