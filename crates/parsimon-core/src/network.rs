@@ -98,6 +98,7 @@ where
                 map
             },
         );
+        let sz_pktmax = opts.sz_pktmax();
         let assignments = assignments
             .into_par_iter()
             .map(|(eidx, mut flows)| {
@@ -105,7 +106,7 @@ where
                 // POSTCONDITION: The flows populating each link will be sorted by start time.
                 flows.sort_by_key(|f| f.start);
                 for f in flows {
-                    chan.push_flow(&f, opts.sz_pktmax);
+                    chan.push_flow(&f, sz_pktmax);
                 }
                 (eidx, chan)
             })
@@ -252,7 +253,7 @@ where
                         .fill(
                             &data,
                             |rec| rec.size,
-                            |rec| rec.pktnorm_delay(opts.sz_pktmax),
+                            |rec| rec.pktnorm_delay(opts.sz_pktmax()),
                             opts.bucket_opts,
                         )?;
                 }
@@ -260,7 +261,7 @@ where
         }
         Ok(DelayNetwork {
             topology,
-            sz_pktmax: opts.sz_pktmax,
+            sz_pktmax: opts.sz_pktmax(),
             routes: self.routes,
         })
     }

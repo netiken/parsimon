@@ -61,6 +61,10 @@ impl LinkSim for MinimLink {
 
         Ok(records)
     }
+
+    fn sz_pktmax(&self) -> Bytes {
+        self.sz_pktmax
+    }
 }
 
 impl MinimLink {

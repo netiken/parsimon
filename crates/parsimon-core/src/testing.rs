@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::linksim::{LinkSim, LinkSimError, LinkSimSpec};
 use crate::network::types::{Link, Node, NodeId};
 use crate::network::FctRecord;
-use crate::units::{Gbps, Nanosecs};
+use crate::units::{Bytes, Gbps, Nanosecs};
 
 /// A no-op link simulator.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +18,10 @@ impl LinkSim for NoOpLinkSim {
 
     fn simulate(&self, _spec: LinkSimSpec) -> Result<Vec<FctRecord>, LinkSimError> {
         Ok(Vec::new())
+    }
+
+    fn sz_pktmax(&self) -> crate::units::Bytes {
+        Bytes::new(1000)
     }
 }
 

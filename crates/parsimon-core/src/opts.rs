@@ -3,7 +3,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-use crate::{edist::BucketOpts, units::Bytes};
+use crate::{edist::BucketOpts, linksim::LinkSim, units::Bytes};
 
 /// Simulation options.
 #[derive(Debug, Clone, typed_builder::TypedBuilder)]
@@ -16,14 +16,18 @@ pub struct SimOpts<L> {
     /// Bucketing parameters.
     #[builder(default)]
     pub bucket_opts: BucketOpts,
-    /// The maximum packet size.
-    #[builder(default = Bytes::new(1000), setter(into))]
-    pub sz_pktmax: Bytes,
 }
 
 impl<L> SimOpts<L> {
     pub(crate) fn is_local(&self) -> bool {
         self.workers.len() == 1 && is_localhost(self.workers[0])
+    }
+}
+
+impl<L: LinkSim> SimOpts<L> {
+    /// Returns the maximum packet size of the simulation.
+    pub fn sz_pktmax(&self) -> Bytes {
+        self.link_sim.sz_pktmax()
     }
 }
 

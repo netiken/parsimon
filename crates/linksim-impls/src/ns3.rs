@@ -59,4 +59,8 @@ impl LinkSim for Ns3Link {
         let records = sim.run().map_err(|e| anyhow::anyhow!(e))?;
         Ok(records)
     }
+
+    fn sz_pktmax(&self) -> Bytes {
+        self.sz_pktmax
+    }
 }

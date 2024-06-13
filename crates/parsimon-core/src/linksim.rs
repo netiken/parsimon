@@ -11,7 +11,7 @@ use crate::{
         types::{Link, Node},
         FctRecord, Flow, FlowId, NodeId, NodeKind, TopologyError,
     },
-    units::{BitsPerSec, Nanosecs},
+    units::{BitsPerSec, Bytes, Nanosecs},
 };
 
 /// The return type of a link simulation.
@@ -24,6 +24,9 @@ pub trait LinkSim: serde::Serialize + serde::de::DeserializeOwned {
 
     /// Given [`LinkSimSpec`], simulate it and return a collection of FCT records.
     fn simulate(&self, spec: LinkSimSpec) -> LinkSimResult;
+
+    /// Returns the maximum packet size of the simulation.
+    fn sz_pktmax(&self) -> Bytes;
 }
 /// A full specification for a link-level simulation.
 #[derive(Debug)]
