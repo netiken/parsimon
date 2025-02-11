@@ -99,6 +99,8 @@ impl MinimLink {
             })
             .collect::<Vec<_>>();
 
+        println!("srcs: {:?}", srcs);
+
         let mut src2dst2delay = FxHashMap::default();
         let mut max_qindex = QIndex::ZERO;
         let flows = spec

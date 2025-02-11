@@ -65,6 +65,88 @@ where
         Ok(Self { topology, routes })
     }
 
+    /// Creates a `SimNetwork`, and returns flow to paths assignments.
+    pub fn into_simulations_with_paths<L: LinkSim>(
+        self,
+        flows: Vec<Flow>,
+        opts: SimOpts<L>,
+    ) -> (SimNetwork<L, R>, HashMap<FlowId, Vec<(NodeId, NodeId)>>) {
+        let mut topology = Topology::new_traced(&self.topology);
+        let assignments = utils::par_chunks(&flows, |flows| {
+            let mut assignments = Vec::new();
+            for &f @ Flow { id, src, dst, .. } in flows {
+                let hash = utils::calculate_hash(&id);
+                let path = self.edge_indices_between(src, dst, |choices| {
+                    assert!(!choices.is_empty(), "missing path from {src} to {dst}");
+                    let idx = hash as usize % choices.len();
+                    Some(&choices[idx])
+                });
+                for eidx in path {
+                    assignments.push((eidx, f));
+                }
+            }
+            assignments
+        })
+        .fold(
+            FxHashMap::default(),
+            |mut map: FxHashMap<_, Vec<_>>, (e, f)| {
+                map.entry(e).or_default().push(f);
+                map
+            },
+        );
+
+        // Create flow to path assignments
+        let mut flow_paths = HashMap::new();
+
+        for flow in flows.clone() {
+            let hash = utils::calculate_hash(&flow.id);
+            let path = self.edge_indices_between(flow.src, flow.dst, |choices| {
+                    assert!(!choices.is_empty(), "missing path from {:?} to {:?}", flow.src, flow.dst);
+                    let idx = hash as usize % choices.len();
+                    Some(&choices[idx])
+                });
+            
+            for eidx in path {
+                let chan = &self.topology.graph[eidx];
+                let src = chan.src();
+                let dst = chan.dst();
+                flow_paths.entry(flow.id).or_insert_with(Vec::new).push((src, dst));
+            }
+        }
+
+        let sz_pktmax = opts.sz_pktmax();
+        let assignments = assignments
+            .into_par_iter()
+            .map(|(eidx, mut flows)| {
+                let mut chan = FlowChannel::new_from(&self.topology.graph[eidx]);
+                // POSTCONDITION: The flows populating each link will be sorted by start time.
+                flows.sort_by_key(|f| f.start);
+                for f in flows {
+                    chan.push_flow(&f, sz_pktmax);
+                }
+                (eidx, chan)
+            })
+            .collect::<Vec<_>>();
+        for (eidx, chan) in assignments {
+            topology.graph[eidx] = chan;
+        }
+        // The default clustering uses a 1:1 mapping between edges and clusters.
+        // CORRECTNESS: The code below assumes edge indices start at zero.
+        let clusters = topology
+            .graph
+            .edge_indices()
+            .map(|eidx: EdgeIndex| Cluster::new(eidx, [eidx].into_iter().collect()))
+            .collect();
+
+        (SimNetwork {
+            topology,
+            routes: self.routes,
+            opts,
+            clusters,
+            flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+        }, flow_paths)
+    }
+
     /// Creates a `SimNetwork`.
     ///
     /// PRECONDITIONS: For each flow in `flows`, `flow.src` and `flow.dst` must be valid hosts in
@@ -119,7 +201,7 @@ where
         let clusters = topology
             .graph
             .edge_indices()
-            .map(|eidx| Cluster::new(eidx, [eidx].into_iter().collect()))
+            .map(|eidx: EdgeIndex| Cluster::new(eidx, [eidx].into_iter().collect()))
             .collect();
         SimNetwork {
             topology,
@@ -220,8 +302,10 @@ where
         let opts = &self.opts;
 
         let eidx2data = if opts.is_local() {
+            println!("[into_delays] simulating clusters locally");
             self.simulate_clusters_locally(opts.link_sim.clone())?
         } else {
+            println!("[into_delays] simulating clusters remotely");
             self.simulate_clusters(opts.link_sim.clone(), &opts.workers)?
         };
 
@@ -275,6 +359,7 @@ where
     {
         let (s, r) = crossbeam_channel::unbounded();
         // Simulate all cluster representatives in parallel.
+        println!("[simulate_clusters_locally] simulating all cluster in parallel");
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
             let data = match self.link_sim_desc(edge) {
