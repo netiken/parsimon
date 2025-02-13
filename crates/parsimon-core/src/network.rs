@@ -158,6 +158,7 @@ where
         opts: SimOpts<L>,
     ) -> SimNetwork<L, R> {
         let mut topology = Topology::new_traced(&self.topology);
+
         let assignments = utils::par_chunks(&flows, |flows| {
             let mut assignments = Vec::new();
             for &f @ Flow { id, src, dst, .. } in flows {
@@ -180,6 +181,7 @@ where
                 map
             },
         );
+
         let sz_pktmax = opts.sz_pktmax();
         let assignments = assignments
             .into_par_iter()
@@ -196,6 +198,7 @@ where
         for (eidx, chan) in assignments {
             topology.graph[eidx] = chan;
         }
+
         // The default clustering uses a 1:1 mapping between edges and clusters.
         // CORRECTNESS: The code below assumes edge indices start at zero.
         let clusters = topology
@@ -302,10 +305,8 @@ where
         let opts = &self.opts;
 
         let eidx2data = if opts.is_local() {
-            println!("[into_delays] simulating clusters locally");
             self.simulate_clusters_locally(opts.link_sim.clone())?
         } else {
-            println!("[into_delays] simulating clusters remotely");
             self.simulate_clusters(opts.link_sim.clone(), &opts.workers)?
         };
 
@@ -359,7 +360,6 @@ where
     {
         let (s, r) = crossbeam_channel::unbounded();
         // Simulate all cluster representatives in parallel.
-        println!("[simulate_clusters_locally] simulating all cluster in parallel");
         self.clusters.par_iter().try_for_each_with(s, |s, c| {
             let edge = c.representative();
             let data = match self.link_sim_desc(edge) {

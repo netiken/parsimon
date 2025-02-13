@@ -169,10 +169,6 @@ impl LinkSimTopo {
         let mut path = Vec::new();
         let mut cur = src;
         while cur != dst {
-            if self.nid2nix.get(&cur) == None {
-                println!("[LinkSimTopo::path] getting cur: {:?} returned None", cur);
-                println!("[LinkSimTopo::path] LinkSimTopo: {:?}", self);
-            }
             let nix = *self.nid2nix.get(&cur).unwrap();
             let l = match self
                 .graph
