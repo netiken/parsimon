@@ -14,8 +14,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 #[derive(Debug, Clone, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
     /// The sending window.
-    #[builder(default = Bytes::new(10_000), setter(into))]
-    pub window: Bytes,
+    #[builder(default = vec![Bytes::new(10_000)], setter(into))]
+    pub windows: Vec<Bytes>,
     /// DCTCP gain.
     #[builder(default = 0.0625)]
     pub dctcp_gain: f64,
@@ -157,13 +157,18 @@ impl MinimLink {
             .quanta
             .iter()
             .map(|q| minim::units::Bytes::new(q.into_u64()))
-            .collect();
+            .collect::<Vec<_>>();
+        let windows = self
+            .windows
+            .iter()
+            .map(|w| minim::units::Bytes::new(w.into_u64()))
+            .collect::<Vec<_>>();
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))
             .quanta(quanta)
             .sources(srcs)
             .flows(flows)
-            .window(minim::units::Bytes::new(self.window.into_u64()))
+            .windows(windows)
             .dctcp_marking_thresholds(marking_thresholds)
             .dctcp_gain(self.dctcp_gain)
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
