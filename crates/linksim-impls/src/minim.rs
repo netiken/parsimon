@@ -23,7 +23,7 @@ pub struct MinimLink {
     #[builder(default = Mbps::new(615).into(), setter(into))]
     pub dctcp_ai: BitsPerSec,
     /// Constant for computing DCTCP marking threshold.
-    #[builder(setter(into))]
+    #[builder(setter(into), default = vec![30])]
     pub dctcp_marking_c: Vec<u64>,
     /// Maximum packet size
     #[builder(default = Bytes::new(1000), setter(into))]
@@ -31,6 +31,12 @@ pub struct MinimLink {
     /// Switch weights.
     #[builder(setter(into), default = vec![Bytes::new(1024)])]
     pub quanta: Vec<Bytes>,
+}
+
+impl Default for MinimLink {
+    fn default() -> Self {
+        MinimLink::builder().build()
+    }
 }
 
 impl LinkSim for MinimLink {
