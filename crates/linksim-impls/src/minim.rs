@@ -6,7 +6,7 @@ use parsimon_core::{
     constants::SZ_PKTHDR,
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
     network::{FctRecord, FlowId, QIndex},
-    units::{BitsPerSec, Bytes, Kilobytes, Mbps, Nanosecs},
+    units::{BitsPerSec, Bytes, Mbps, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -23,20 +23,14 @@ pub struct MinimLink {
     #[builder(default = Mbps::new(615).into(), setter(into))]
     pub dctcp_ai: BitsPerSec,
     /// Constant for computing DCTCP marking threshold.
-    #[builder(default = 30, setter(into))]
-    pub dctcp_marking_c: u64,
+    #[builder(setter(into))]
+    pub dctcp_marking_c: Vec<u64>,
     /// Maximum packet size
     #[builder(default = Bytes::new(1000), setter(into))]
     pub sz_pktmax: Bytes,
     /// Switch weights.
     #[builder(setter(into), default = vec![Bytes::new(1024)])]
     pub quanta: Vec<Bytes>,
-}
-
-impl Default for MinimLink {
-    fn default() -> Self {
-        Self::builder().build()
-    }
 }
 
 impl LinkSim for MinimLink {
@@ -135,13 +129,19 @@ impl MinimLink {
             )));
         }
 
-        let marking_threshold = Kilobytes::new(
-            spec.bottleneck
-                .total_bandwidth
-                .scale_by(10e9_f64.recip())
-                .scale_by(self.dctcp_marking_c as f64)
-                .into_u64(),
-        );
+        let marking_thresholds = self
+            .dctcp_marking_c
+            .iter()
+            .map(|&c| {
+                minim::units::Kilobytes::new(
+                    spec.bottleneck
+                        .total_bandwidth
+                        .scale_by(10e9_f64.recip())
+                        .scale_by(c as f64)
+                        .into_u64(),
+                )
+            })
+            .collect::<Vec<_>>();
         let bandwidth = if src_ids.contains(&spec.bottleneck.from) {
             spec.bottleneck.total_bandwidth.scale_by(100_f64)
         } else {
@@ -158,7 +158,7 @@ impl MinimLink {
             .sources(srcs)
             .flows(flows)
             .window(minim::units::Bytes::new(self.window.into_u64()))
-            .dctcp_marking_threshold(minim::units::Kilobytes::new(marking_threshold.into_u64()))
+            .dctcp_marking_thresholds(marking_thresholds)
             .dctcp_gain(self.dctcp_gain)
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
             .sz_pktmax(minim::units::Bytes::new(self.sz_pktmax.into_u64()))

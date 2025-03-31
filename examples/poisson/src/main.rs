@@ -58,6 +58,7 @@ fn main() -> anyhow::Result<()> {
         .build();
     let minim = MinimLink::builder()
         .window(WINDOW)
+        .dctcp_marking_c(vec![30])
         .dctcp_gain(DCTCP_GAIN)
         .dctcp_ai(DCTCP_AI)
         .sz_pktmax(SZ_PKTMAX)

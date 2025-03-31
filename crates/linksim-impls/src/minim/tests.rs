@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use minim::{
-    units::{BitsPerSec, Bytes, Nanosecs},
+    units::{BitsPerSec, Bytes, Kilobytes, Nanosecs},
     Config, FlowDesc, SourceDesc,
 };
 use parsimon_core::{
@@ -22,7 +22,7 @@ struct MinimCheck {
     sources: Vec<SourceDesc>,
     flows: Vec<FlowDesc>,
     window: Bytes,
-    dctcp_marking_threshold: Bytes,
+    dctcp_marking_thresholds: Vec<Kilobytes>,
     dctcp_gain: f64,
     dctcp_ai: BitsPerSec,
     sz_pktmax: Bytes,
@@ -37,7 +37,7 @@ impl MinimCheck {
             sources: cfg.sources.clone(),
             flows: cfg.flows.clone(),
             window: cfg.window,
-            dctcp_marking_threshold: cfg.dctcp_marking_threshold,
+            dctcp_marking_thresholds: cfg.dctcp_marking_thresholds.clone(),
             dctcp_gain: cfg.dctcp_gain,
             dctcp_ai: cfg.dctcp_ai,
             sz_pktmax: cfg.sz_pktmax,
@@ -65,6 +65,7 @@ fn eight_node_config_snapshots(flows: Vec<Flow>) -> anyhow::Result<Snapshot> {
     // Build a `MinimLink` instance and use it to generate `MinimCheck`s.
     let linksim = MinimLink::builder()
         .window(parsimon_core::units::Bytes::new(18_000))
+        .dctcp_marking_c(vec![30])
         .dctcp_gain(0.0625)
         .dctcp_ai(parsimon_core::units::Mbps::new(615))
         .quanta([parsimon_core::units::Bytes::new(1024); 2])
