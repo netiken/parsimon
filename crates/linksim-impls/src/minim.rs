@@ -6,7 +6,7 @@ use parsimon_core::{
     constants::SZ_PKTHDR,
     linksim::{LinkSim, LinkSimError, LinkSimNodeKind, LinkSimResult, LinkSimSpec, LinkSimTopo},
     network::{FctRecord, FlowId, QIndex},
-    units::{BitsPerSec, Bytes, Kilobytes, Mbps, Nanosecs},
+    units::{BitsPerSec, Bytes, Mbps, Nanosecs},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -14,8 +14,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 #[derive(Debug, Clone, typed_builder::TypedBuilder, serde::Serialize, serde::Deserialize)]
 pub struct MinimLink {
     /// The sending window.
-    #[builder(default = Bytes::new(10_000), setter(into))]
-    pub window: Bytes,
+    #[builder(default = vec![Bytes::new(10_000)], setter(into))]
+    pub windows: Vec<Bytes>,
     /// DCTCP gain.
     #[builder(default = 0.0625)]
     pub dctcp_gain: f64,
@@ -23,8 +23,8 @@ pub struct MinimLink {
     #[builder(default = Mbps::new(615).into(), setter(into))]
     pub dctcp_ai: BitsPerSec,
     /// Constant for computing DCTCP marking threshold.
-    #[builder(default = 30, setter(into))]
-    pub dctcp_marking_c: u64,
+    #[builder(setter(into), default = vec![30])]
+    pub dctcp_marking_c: Vec<u64>,
     /// Maximum packet size
     #[builder(default = Bytes::new(1000), setter(into))]
     pub sz_pktmax: Bytes,
@@ -35,7 +35,7 @@ pub struct MinimLink {
 
 impl Default for MinimLink {
     fn default() -> Self {
-        Self::builder().build()
+        MinimLink::builder().build()
     }
 }
 
@@ -135,13 +135,19 @@ impl MinimLink {
             )));
         }
 
-        let marking_threshold = Kilobytes::new(
-            spec.bottleneck
-                .total_bandwidth
-                .scale_by(10e9_f64.recip())
-                .scale_by(self.dctcp_marking_c as f64)
-                .into_u64(),
-        );
+        let marking_thresholds = self
+            .dctcp_marking_c
+            .iter()
+            .map(|&c| {
+                minim::units::Kilobytes::new(
+                    spec.bottleneck
+                        .total_bandwidth
+                        .scale_by(10e9_f64.recip())
+                        .scale_by(c as f64)
+                        .into_u64(),
+                )
+            })
+            .collect::<Vec<_>>();
         let bandwidth = if src_ids.contains(&spec.bottleneck.from) {
             spec.bottleneck.total_bandwidth.scale_by(100_f64)
         } else {
@@ -151,14 +157,19 @@ impl MinimLink {
             .quanta
             .iter()
             .map(|q| minim::units::Bytes::new(q.into_u64()))
-            .collect();
+            .collect::<Vec<_>>();
+        let windows = self
+            .windows
+            .iter()
+            .map(|w| minim::units::Bytes::new(w.into_u64()))
+            .collect::<Vec<_>>();
         let cfg = minim::Config::builder()
             .bandwidth(minim::units::BitsPerSec::new(bandwidth.into_u64()))
             .quanta(quanta)
             .sources(srcs)
             .flows(flows)
-            .window(minim::units::Bytes::new(self.window.into_u64()))
-            .dctcp_marking_threshold(minim::units::Kilobytes::new(marking_threshold.into_u64()))
+            .windows(windows)
+            .dctcp_marking_thresholds(marking_thresholds)
             .dctcp_gain(self.dctcp_gain)
             .dctcp_ai(minim::units::BitsPerSec::new(self.dctcp_ai.into_u64()))
             .sz_pktmax(minim::units::Bytes::new(self.sz_pktmax.into_u64()))

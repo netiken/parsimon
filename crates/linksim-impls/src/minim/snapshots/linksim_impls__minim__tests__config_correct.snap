@@ -22,8 +22,12 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
+  windows:
+    - 18000
+    - 18000
+  dctcp_marking_thresholds:
+    - 30
+    - 30
   dctcp_gain: 0.0625
   dctcp_ai: 615000000
   sz_pktmax: 1000
@@ -49,8 +53,12 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
+  windows:
+    - 18000
+    - 18000
+  dctcp_marking_thresholds:
+    - 30
+    - 30
   dctcp_gain: 0.0625
   dctcp_ai: 615000000
   sz_pktmax: 1000
@@ -76,8 +84,12 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
+  windows:
+    - 18000
+    - 18000
+  dctcp_marking_thresholds:
+    - 30
+    - 30
   dctcp_gain: 0.0625
   dctcp_ai: 615000000
   sz_pktmax: 1000
@@ -103,8 +115,12 @@ expression: snapshot
       size: 1000
       start: 960
       delay2dst: 4000
-  window: 18000
-  dctcp_marking_threshold: 30000
+  windows:
+    - 18000
+    - 18000
+  dctcp_marking_thresholds:
+    - 30
+    - 30
   dctcp_gain: 0.0625
   dctcp_ai: 615000000
   sz_pktmax: 1000

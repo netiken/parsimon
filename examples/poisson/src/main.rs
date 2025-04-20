@@ -57,7 +57,8 @@ fn main() -> anyhow::Result<()> {
         .flows(flows.clone())
         .build();
     let minim = MinimLink::builder()
-        .window(WINDOW)
+        .windows(vec![WINDOW])
+        .dctcp_marking_c(vec![30])
         .dctcp_gain(DCTCP_GAIN)
         .dctcp_ai(DCTCP_AI)
         .sz_pktmax(SZ_PKTMAX)

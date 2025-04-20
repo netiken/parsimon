@@ -68,7 +68,7 @@ struct Features<'a, F, X, L, R> {
     cache: DashMap<EdgeIndex, X>,
 }
 
-impl<'a, F, X, L, R> Features<'a, F, X, L, R>
+impl<F, X, L, R> Features<'_, F, X, L, R>
 where
     F: Fn(&FlowChannel, &[Flow]) -> X + Sync,
     X: Clone + Send + Sync,

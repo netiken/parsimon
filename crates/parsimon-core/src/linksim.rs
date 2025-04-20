@@ -164,7 +164,7 @@ impl LinkSimTopo {
         Self { graph, nid2nix }
     }
 
-    /// Returns a path of `LinkSimLink`s from `src` to `dst.
+    /// Returns a path of `LinkSimLink`s from `src` to `dst`.
     pub fn path(&self, src: NodeId, dst: NodeId) -> Option<Vec<LinkSimLink>> {
         let mut path = Vec::new();
         let mut cur = src;
@@ -177,10 +177,7 @@ impl LinkSimTopo {
             {
                 Some(l) => *l.weight(),
                 None => {
-                    let eix = match self.graph.first_edge(nix, Direction::Outgoing) {
-                        Some(eidx) => eidx,
-                        None => return None,
-                    };
+                    let eix = self.graph.first_edge(nix, Direction::Outgoing)?;
                     self.graph[eix]
                 }
             };
