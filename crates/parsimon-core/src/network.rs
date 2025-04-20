@@ -235,6 +235,7 @@ where
         SimNetwork {
             topology,
             routes: self.routes,
+            opts:None,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
             channel_to_flowid_map: channel_to_flowid_map,
