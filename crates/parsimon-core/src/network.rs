@@ -9,6 +9,7 @@ pub mod topology;
 pub mod types;
 
 use std::{collections::HashMap, net::SocketAddr};
+use std::net::Ipv4Addr;
 
 use itertools::Itertools;
 use petgraph::graph::NodeIndex;
@@ -127,6 +128,117 @@ where
             opts,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+            channel_to_flowid_map: None,
+            path_to_flowid_map: None,
+        }
+    }
+
+    /// Creates a `SimNetwork` for path.
+    pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
+        let topology = Topology::new_traced(&self.topology);
+        let node_num = topology.graph.node_count();
+        // println!("node_num: {:?}", node_num);
+        let mut server_address = vec![Ipv4Addr::UNSPECIFIED; node_num as usize];
+
+        for node in topology.graph.node_indices() {
+            let node = &topology.graph[node];
+            if let NodeKind::Host = node.kind {
+                let node_id:usize = node.id.as_usize();
+                server_address[node_id] = utils::node_id_to_ip(node_id);
+            }
+        }
+        // println!("server_address: {:?}", server_address);
+
+        // Maintain port number for each host
+        let mut port_number = vec![vec![10000; node_num]; node_num];
+        // Calculate port numbers in advance
+        let mut port_number_map: FxHashMap<usize, u16> = FxHashMap::default();
+
+        for &f in &flows {
+            let ids = f.get_ids();
+            let sport: u16 = port_number[ids[1]][ids[2]];
+            port_number[ids[1]][ids[2]] += 1;
+            port_number_map.entry(ids[0]).or_insert(sport);
+        }
+
+        let (assignments_0, assignments_1) = utils::par_chunks(&flows, |flows| {
+            let mut assignments = Vec::new();
+            for &f @ Flow { id, src, dst, .. } in flows {
+                // Get the ids (i.e., ID, SRC, DST) as usize of the flow
+                let ids = f.get_ids(); 
+
+                let sip= server_address[ids[1]];
+                let sip_bytes = sip.octets();
+
+                let dip= server_address[ids[2]];
+                let dip_bytes = dip.octets();
+
+                let sport: u16 = port_number_map[&ids[0]];
+
+                // Create buffer and populate with sip, dip, and ports
+                let mut buf = [0u8; 12]; // 4 (sip) + 4 (dip) + 2 (sport) + 2 (dport)
+
+                buf[0..4].copy_from_slice(&sip_bytes);
+                buf[0..4].reverse();
+                buf[4..8].copy_from_slice(&dip_bytes);
+                buf[4..8].reverse();
+
+                // Set ports based on your logic
+                let port_combined = (sport as u32) | ((100 as u32) << 16);
+                let port_bytes = port_combined.to_be_bytes();
+                buf[8..12].copy_from_slice(&port_bytes);
+                buf[8..12].reverse();
+
+                let path = self.edge_indices_between_ns3(src, dst, &buf);
+
+                let mut path_vec = vec![(src, dst)];
+                for eidx in path {
+                    path_vec.push((self.topology.graph[eidx].src(), self.topology.graph[eidx].dst()));
+                } 
+                for pair in path_vec.iter().skip(1).cloned() {
+                    assignments.push((0, pair, vec![pair], id));
+                }
+                assignments.push((1, (src, dst), path_vec, id));
+            }    
+            assignments
+        })
+        .fold(
+            (FxHashMap::default(), FxHashMap::default()),
+            |(mut map_0, mut map_1): (FxHashMap<(NodeId, NodeId), FxHashSet<FlowId>>,FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>), (tag, c, p, f)| {
+                if tag == 0 {
+                    map_0.entry(c).or_default().insert(f);
+                } else {
+                    map_1.entry(p).or_default().insert(f);
+                }
+                (map_0, map_1)
+            },
+        );
+
+        // println!("assignments: {:?}", assignments.len());
+        let channel_to_flowid_map = if assignments_0.is_empty() {
+            None
+        } else {
+            Some(assignments_0)
+        };
+
+        let path_to_flowid_map = if assignments_1.is_empty() {
+            None
+        } else {
+            Some(assignments_1)
+        };
+
+        let clusters = topology
+            .graph
+            .edge_indices()
+            .map(|eidx| Cluster::new(eidx, [eidx].into_iter().collect()))
+            .collect();
+        SimNetwork {
+            topology,
+            routes: self.routes,
+            clusters,
+            flows: flows.into_iter().map(|f| (f.id, f)).collect(),
+            channel_to_flowid_map: channel_to_flowid_map,
+            path_to_flowid_map: path_to_flowid_map,
         }
     }
 
@@ -197,6 +309,9 @@ pub struct SimNetwork<L, R = BfsRoutes> {
     clusters: Vec<Cluster>,
     // Each channel references these flows by ID
     flows: HashMap<FlowId, Flow>,
+
+    channel_to_flowid_map: Option<FxHashMap<(NodeId, NodeId), FxHashSet<FlowId>>>,
+    path_to_flowid_map: Option<FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>>,
 }
 
 impl<L, R> SimNetwork<L, R>
@@ -406,6 +521,13 @@ where
     /// Sets the `SimNetwork`'s clusters.
     pub fn set_clusters(&mut self, clusters: Vec<Cluster>) {
         self.clusters = clusters;
+    }
+
+    /// get path_to_flowid_map
+    pub fn get_routes(&self) -> Option<(&FxHashMap<(NodeId, NodeId), FxHashSet<FlowId>>, &FxHashMap<Vec<(NodeId, NodeId)>, FxHashSet<FlowId>>)> {
+        self.channel_to_flowid_map.as_ref().and_then(|channel_map| {
+            self.path_to_flowid_map.as_ref().map(|path_map| (channel_map, path_map))
+        })
     }
 
     /// Returns a path from `src` to `dst`, using `choose` to select a path when there are multiple
@@ -800,6 +922,43 @@ pub(crate) trait TraversableNetwork<C: Clone + Channel, R: RoutingAlgo> {
             }
         }
         acc.into_iter()
+    }
+
+    fn edge_indices_between_ns3(
+        &self,
+        src: NodeId,
+        dst: NodeId,
+        buf: &[u8],
+    ) -> Vec<EdgeIndex> {
+        let mut acc = Vec::new();
+        let mut cur = src;
+        while cur != dst {
+            let next_hop_choices = match self.routes().next_hops(cur, dst) {
+                Some(hops) => hops,
+                None => break,
+            };
+
+            let idx = if let NodeKind::Switch = self.topology().graph[*self.topology().idx_of(&cur).unwrap()].kind {
+                let hash = utils::calculate_hash_ns3(buf, buf.len(), cur.as_usize() as u32);
+                let tmp=(hash % next_hop_choices.len() as u32) as usize;
+                // Print input parameters
+                // println!("next_hop_choices: {:?}\nKey: {:?}\nLength of key: {}\nSeed value: {}\nIndex: {}", next_hop_choices,buf,buf.len(),cur,tmp);
+                tmp
+            } else {
+                0 // For host nodes, always choose the first next hop
+            };
+
+            let next_hop = next_hop_choices[idx];
+
+            // These indices are all guaranteed to exist because we have a valid topology
+            let i = *self.topology().idx_of(&cur).unwrap();
+            let j = *self.topology().idx_of(&next_hop).unwrap();
+            let e = self.topology().find_edge(i, j).unwrap();
+            acc.push(e);
+
+            cur = next_hop;
+        }
+        acc
     }
 
     fn path(

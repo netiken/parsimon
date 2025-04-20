@@ -9,11 +9,72 @@ use rayon::prelude::*;
 use crate::constants::SZ_PKTHDR;
 use crate::network::{Channel, Flow};
 use crate::units::{Bytes, Gbps, Nanosecs};
+use std::net::Ipv4Addr;
 
 pub(crate) fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
     t.hash(&mut s);
     s.finish()
+}
+
+const BASE_IP: u32 = 0x0b000001;
+const IP_STEP: u32 = 0x00010000;
+
+pub(crate) fn node_id_to_ip(id: usize) -> Ipv4Addr {
+    let id_u32 = id as u32; // Convert usize to u32
+    let ip = BASE_IP + ((id_u32 / 256) * IP_STEP) + ((id_u32 % 256) * 0x00000100);
+    Ipv4Addr::from(ip)
+}
+
+pub(crate) fn ip_to_node_id(ip: Ipv4Addr) -> usize {
+    ((ip.octets()[0] as usize) << 24) | ((ip.octets()[1] as usize) << 16)
+}
+
+pub(crate) fn calculate_hash_ns3(key: &[u8], len: usize, seed: u32) -> u32 {
+    let mut h = seed; // Convert seed to u32 for compatibility with the algorithm
+    let mut key_x4 = key;
+
+    if len > 3 {
+        let key_x4_u32 = unsafe {
+            std::slice::from_raw_parts(key.as_ptr() as *const u32, len / 4)
+        };
+
+        for &k in key_x4_u32 {
+            let mut k = k;
+            k = k.wrapping_mul(0xcc9e2d51);
+            k = (k << 15) | (k >> 17);
+            k = k.wrapping_mul(0x1b873593);
+
+            h ^= k;
+            h = (h << 13) | (h >> 19);
+            h = h.wrapping_add(h << 2).wrapping_add(0xe6546b64);
+        }
+        key_x4 = &key[len & !3..];
+    }
+
+    if len & 3 != 0 {
+        let mut k = 0;
+
+        for &byte in key_x4.iter().rev() {
+            k <<= 8;
+            k |= byte as u32;
+        }
+
+        k = k.wrapping_mul(0xcc9e2d51);
+        k = (k << 15) | (k >> 17);
+        k = k.wrapping_mul(0x1b873593);
+
+        h ^= k;
+    }
+
+    h ^= len as u32;
+    h ^= h >> 16;
+    h = h.wrapping_mul(0x85ebca6b);
+    h ^= h >> 13;
+    h = h.wrapping_mul(0xc2b2ae35);
+    h ^= h >> 16;
+
+    h
 }
 
 pub(crate) fn bdp(bandwidth: Gbps, delay: impl Into<Nanosecs>) -> Bytes {

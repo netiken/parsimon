@@ -47,7 +47,11 @@ pub enum NodeKind {
 }
 
 identifier!(NodeId, usize);
-
+impl NodeId {
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
 /// A link is a bidirectional channel connecting two [nodes](Node).
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Link {
@@ -276,7 +280,11 @@ impl<'a, C: Channel> Path<'a, C> {
 }
 
 identifier!(FlowId, usize);
-
+impl FlowId {
+    pub fn as_usize(&self) -> usize {
+        self.0
+    }
+}
 /// A queue index.
 ///
 /// Each queue is associated with a scheduling weight.
@@ -328,7 +336,11 @@ pub struct Flow {
     /// The flow's start time.
     pub start: Nanosecs,
 }
-
+impl Flow {
+    pub fn get_ids(&self) -> Vec<usize> {
+        vec![self.id.0, self.src.0, self.dst.0]
+    }
+}
 /// An `FctRecord` records the flow completion time of a particular flow.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct FctRecord {
