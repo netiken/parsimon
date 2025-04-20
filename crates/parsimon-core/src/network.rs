@@ -134,7 +134,7 @@ where
     }
 
     /// Creates a `SimNetwork` for path.
-    pub fn into_simulations_path(self, flows: Vec<Flow>) -> SimNetwork<R> {
+    pub fn into_simulations_path(self, flows: Vec<Flow>, opts: SimOpts<L>) -> SimNetwork<R> {
         let topology = Topology::new_traced(&self.topology);
         let node_num = topology.graph.node_count();
         // println!("node_num: {:?}", node_num);
@@ -235,7 +235,7 @@ where
         SimNetwork {
             topology,
             routes: self.routes,
-            opts:None,
+            opts,
             clusters,
             flows: flows.into_iter().map(|f| (f.id, f)).collect(),
             channel_to_flowid_map: channel_to_flowid_map,
